@@ -4,10 +4,9 @@ import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { type Product } from "@/db/schema"
-import { CheckIcon, EyeOpenIcon, PlusIcon } from "@radix-ui/react-icons"
+import { EyeOpenIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons"
 import { toast } from "sonner"
 
-import { addToCart } from "@/lib/actions/cart"
 import { cn, formatPrice } from "@/lib/utils"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -19,129 +18,126 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Icons } from "@/components/icons"
 import { PlaceholderImage } from "@/components/placeholder-image"
 
 interface ProductCardProps extends React.HTMLAttributes<HTMLDivElement> {
   product: Pick<Product, "id" | "name" | "price" | "images" | "inventory"> & {
     category: string | null
   }
-  variant?: "default" | "switchable"
-  isAddedToCart?: boolean
-  onSwitch?: () => Promise<void>
 }
 
 export function ProductCard({
   product,
-  variant = "default",
-  isAddedToCart = false,
-  onSwitch,
   className,
   ...props
 }: ProductCardProps) {
-  const [isUpdatePending, startUpdateTransition] = React.useTransition()
+  const [weight, setWeight] = React.useState<number>(1)
+  
+  // Логика определения стиля по категории
+  const isGolden = product.category?.toLowerCase().includes("golden")
+  const isSelected = product.category?.toLowerCase().includes("selected")
+
+  const presets = [1, 3, 5, 10]
 
   return (
     <Card
-      className={cn("size-full overflow-hidden rounded-lg", className)}
+      className={cn(
+        "size-full overflow-hidden rounded-xl border-2 transition-all duration-300 bg-[#121212]",
+        isGolden ? "border-brand-gold shadow-gold-glow" : "border-neutral-800",
+        isSelected && "border-brand-selected shadow-selected-glow",
+        className
+      )}
       {...props}
     >
       <Link aria-label={product.name} href={`/product/${product.id}`}>
-        <CardHeader className="border-b p-0">
-          <AspectRatio ratio={4 / 3}>
+        <CardHeader className="p-0">
+          <AspectRatio ratio={1 / 1}>
             {product.images?.length ? (
               <Image
-                src={
-                  product.images[0]?.url ?? "/images/product-placeholder.webp"
-                }
-                alt={product.images[0]?.name ?? product.name}
-                className="object-cover"
-                sizes="(min-width: 1024px) 20vw, (min-width: 768px) 25vw, (min-width: 640px) 33vw, (min-width: 475px) 50vw, 100vw"
+                src={product.images[0]?.url ?? "/images/product-placeholder.webp"}
+                alt={product.name}
+                className="object-cover transition-transform hover:scale-105"
                 fill
                 loading="lazy"
               />
             ) : (
-              <PlaceholderImage className="rounded-none" asChild />
+              <PlaceholderImage />
             )}
           </AspectRatio>
         </CardHeader>
-        <span className="sr-only">{product.name}</span>
       </Link>
-      <Link href={`/product/${product.id}`} tabIndex={-1}>
-        <CardContent className="space-y-1.5 p-4">
-          <CardTitle className="line-clamp-1">{product.name}</CardTitle>
-          <CardDescription className="line-clamp-1">
-            {formatPrice(product.price)}
-          </CardDescription>
-        </CardContent>
-      </Link>
-      <CardFooter className="p-4 pt-1">
-        {variant === "default" ? (
-          <div className="flex w-full items-center space-x-2">
-            <Button
-              aria-label="Add to cart"
-              size="sm"
-              className="h-8 w-full rounded-sm"
-              onClick={async () => {
-                startUpdateTransition(() => {})
-                const { error } = await addToCart({
-                  productId: product.id,
-                  quantity: 1,
-                })
 
-                if (error) {
-                  toast.error(error)
-                }
-              }}
-              disabled={isUpdatePending}
-            >
-              {isUpdatePending && (
-                <Icons.spinner
-                  className="mr-2 size-4 animate-spin"
-                  aria-hidden="true"
-                />
-              )}
-              Add to cart
-            </Button>
-            <Link
-              href={`/preview/product/${product.id}`}
-              title="Preview"
-              className={cn(
-                buttonVariants({
-                  variant: "secondary",
-                  size: "icon",
-                  className: "h-8 w-8 shrink-0",
-                })
-              )}
-            >
-              <EyeOpenIcon className="size-4" aria-hidden="true" />
-              <span className="sr-only">Preview</span>
-            </Link>
+      <CardContent className="space-y-3 p-4">
+        <div className="flex justify-between items-start gap-2">
+          <CardTitle className="line-clamp-1 text-lg font-bold text-white">
+            {product.name}
+          </CardTitle>
+          <div className="text-brand-gold font-mono font-bold">
+            {product.price}฿
           </div>
-        ) : (
+        </div>
+
+        {/* Выбор веса (Пресеты) */}
+        <div className="flex flex-wrap gap-2">
+          {presets.map((p) => (
+            <button
+              key={p}
+              onClick={() => setWeight(p)}
+              className={cn(
+                "px-2 py-1 text-xs rounded-md border transition-all",
+                weight === p 
+                  ? "bg-brand-selected border-brand-selected text-black font-bold" 
+                  : "border-neutral-700 text-neutral-400 hover:border-neutral-500"
+              )}
+            >
+              {p}g
+            </button>
+          ))}
+        </div>
+
+        {/* Кастомный степпер */}
+        <div className="flex items-center justify-between bg-black/40 rounded-lg p-1 border border-neutral-800">
           <Button
-            aria-label={isAddedToCart ? "Remove from cart" : "Add to cart"}
-            size="sm"
-            className="h-8 w-full rounded-sm"
-            onClick={async () => {
-              startUpdateTransition(async () => {})
-              await onSwitch?.()
-            }}
-            disabled={isUpdatePending}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-white"
+            onClick={() => setWeight(Math.max(0.5, weight - 0.5))}
           >
-            {isUpdatePending ? (
-              <Icons.spinner
-                className="mr-2 size-4 animate-spin"
-                aria-hidden="true"
-              />
-            ) : isAddedToCart ? (
-              <CheckIcon className="mr-2 size-4" aria-hidden="true" />
-            ) : (
-              <PlusIcon className="mr-2 size-4" aria-hidden="true" />
-            )}
-            {isAddedToCart ? "Added" : "Add to cart"}
+            <MinusIcon className="h-4 w-4" />
           </Button>
-        )}
+          <span className="text-sm font-bold text-brand-selected">{weight}g</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-white"
+            onClick={() => setWeight(weight + 0.5)}
+          >
+            <PlusIcon className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+
+      <CardFooter className="p-4 pt-0 gap-2">
+        <Button
+          className="w-full bg-brand-buds hover:bg-brand-buds/80 text-white font-bold"
+          onClick={() => {
+            toast.success(`Added ${weight}g of ${product.name} to cart`)
+          }}
+        >
+          Add to Order
+        </Button>
+        <Link
+          href={`/preview/product/${product.id}`}
+          className={cn(
+            buttonVariants({
+              variant: "secondary",
+              size: "icon",
+              className: "h-10 w-10 shrink-0 bg-neutral-800 border-neutral-700",
+            })
+          )}
+        >
+          <EyeOpenIcon className="h-5 w-5 text-white" />
+        </Link>
       </CardFooter>
     </Card>
   )
