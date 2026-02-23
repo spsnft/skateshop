@@ -1,132 +1,70 @@
-import Link from "next/link"
-
-import { siteConfig } from "@/config/site"
-import { type getGithubStars } from "@/lib/queries/github"
-import type { getCategories, getFeaturedProducts } from "@/lib/queries/product"
-import { type getFeaturedStores } from "@/lib/queries/store"
+import * as React from "react"
 import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
-import { buttonVariants } from "@/components/ui/button"
 import { ContentSection } from "@/components/content-section"
-import { Icons } from "@/components/icons"
-import {
-  PageActions,
-  PageHeader,
-  PageHeaderDescription,
-  PageHeaderHeading,
-} from "@/components/page-header"
 import { ProductCard } from "@/components/product-card"
 import { Shell } from "@/components/shell"
-import { StoreCard } from "@/components/store-card"
-
-import { CategoryCard } from "./category-card"
 
 interface LobbyProps {
-  githubStarsPromise: ReturnType<typeof getGithubStars>
-  productsPromise: ReturnType<typeof getFeaturedProducts>
-  categoriesPromise: ReturnType<typeof getCategories>
-  storesPromise: ReturnType<typeof getFeaturedStores>
+  productsPromise: Promise<any[]>
+  // Остальные пропсы оставляем для совместимости, но не используем
+  githubStarsPromise?: any
+  categoriesPromise?: any
+  storesPromise?: any
 }
 
 export async function Lobby({
-  githubStarsPromise,
   productsPromise,
-  categoriesPromise,
-  storesPromise,
 }: LobbyProps) {
-  // @see the "Parallel data fetching" docs: https://nextjs.org/docs/app/building-your-application/data-fetching/patterns#parallel-data-fetching
-  const [githubStars, products, categories, stores] = await Promise.all([
-    githubStarsPromise,
-    productsPromise,
-    categoriesPromise,
-    storesPromise,
-  ])
+  const allProducts = await productsPromise
+
+  // Группируем товары по Категории из таблицы (Buds, Concentrates и т.д.)
+  const categories = Array.from(new Set(allProducts.map((p: any) => p.Category)))
 
   return (
-    <Shell className="max-w-6xl gap-0">
-      <PageHeader
-        as="section"
-        className="mx-auto items-center gap-2 text-center"
-        withPadding
-      >
-        <Link
-          href={siteConfig.links.github}
-          target="_blank"
-          rel="noreferrer"
-          className="animate-fade-up"
-          style={{ animationDelay: "0.10s", animationFillMode: "both" }}
-        >
-          <Badge
-            aria-hidden="true"
-            variant="secondary"
-            className="rounded-full px-3.5 py-1.5"
+    <Shell className="max-w-6xl gap-0 pb-20">
+      {/* Логотип или заголовок вместо баннера */}
+      <div className="py-10 text-center">
+         <h1 className="text-4xl font-black tracking-tighter text-white uppercase italic">
+            BND <span className="text-brand-selected text-2xl not-italic">Delivery</span>
+         </h1>
+         <p className="text-neutral-500 mt-2">Premium quality only</p>
+      </div>
+
+      {categories.map((category: string) => {
+        const categoryProducts = allProducts.filter((p: any) => p.Category === category)
+        
+        return (
+          <ContentSection
+            key={category}
+            title={category}
+            description={`Premium selection of ${category.toLowerCase()}`}
+            href="#"
+            linkText=""
+            className="pt-10"
           >
-            <Icons.gitHub className="mr-2 size-3.5" aria-hidden="true" />
-            {githubStars} stars on GitHub
-          </Badge>
-        </Link>
-        <PageHeaderHeading
-          className="animate-fade-up"
-          style={{ animationDelay: "0.20s", animationFillMode: "both" }}
-        >
-          Foundation for your commerce platform
-        </PageHeaderHeading>
-        <PageHeaderDescription
-          className="max-w-[46.875rem] animate-fade-up"
-          style={{ animationDelay: "0.30s", animationFillMode: "both" }}
-        >
-          Skateshop is an open-source platform for building and customizing your
-          own commerce platform with ease.
-        </PageHeaderDescription>
-        <PageActions
-          className="animate-fade-up"
-          style={{ animationDelay: "0.40s", animationFillMode: "both" }}
-        >
-          <Link href="/products" className={cn(buttonVariants())}>
-            Buy now
-          </Link>
-          <Link
-            href="/dashboard/stores"
-            className={cn(buttonVariants({ variant: "outline" }))}
-          >
-            Sell now
-          </Link>
-        </PageActions>
-      </PageHeader>
-      <section
-        className="grid animate-fade-up grid-cols-1 gap-4 xs:grid-cols-2 md:grid-cols-4"
-        style={{ animationDelay: "0.50s", animationFillMode: "both" }}
-      >
-        {categories.map((category) => (
-          <CategoryCard key={category.name} category={category} />
-        ))}
-      </section>
-      <ContentSection
-        title="Featured products"
-        description="Explore products from around the world"
-        href="/products"
-        linkText="View all products"
-        className="pt-14 md:pt-20 lg:pt-24"
-      >
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </ContentSection>
-      <ContentSection
-        title="Featured stores"
-        description="Explore stores from around the world"
-        href="/stores"
-        linkText="View all stores"
-        className="py-14 md:py-20 lg:py-24"
-      >
-        {stores.map((store) => (
-          <StoreCard
-            key={store.id}
-            store={store}
-            href={`/products?store_ids=${store.id}`}
-          />
-        ))}
-      </ContentSection>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {categoryProducts.map((item: any, index: number) => {
+                // Преобразуем данные из таблицы в формат, который понимает наша ProductCard
+                const formattedProduct = {
+                  id: index.toString(),
+                  name: item.Name,
+                  price: item.Price_1g, // По умолчанию ставим цену за 1г
+                  category: item.Subcategory, // Чтобы работала логика цветов (Silver/Gold)
+                  images: [{ url: item.Photo || "/images/product-placeholder.webp", name: item.Name }],
+                  inventory: 1
+                }
+                
+                return (
+                  <ProductCard 
+                    key={index} 
+                    product={formattedProduct} 
+                  />
+                )
+              })}
+            </div>
+          </ContentSection>
+        )
+      })}
     </Shell>
   )
 }
