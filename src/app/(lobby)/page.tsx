@@ -2,15 +2,15 @@
 import * as React from "react"
 import { getProducts } from "@/lib/fetchers/product"
 
-// Компонент карточки с кнопками веса и золотым свечением
 function ProductCard({ product }: { product: any }) {
   const [selectedWeight, setSelectedWeight] = React.useState<string>("1")
   
-  // Выбираем цену из таблицы в зависимости от нажатой кнопки
+  // Берем цену для выбранного веса из объекта prices, который мы мапим в fetcher
   const currentPrice = product.prices?.[selectedWeight] || product.price
   
-  // Пытаемся собрать путь к фото из твоей папки images
-  const imageUrl = product.image ? `/images/${product.image}` : null
+  // Исправленный путь: так как bndsmall.png лежит прямо в public, убираем /images/
+  // Если в таблице написано "bndsmall.png", то путь будет "/bndsmall.png"
+  const imageUrl = product.image ? `/${product.image}` : null
   const isGold = product.category?.toLowerCase().includes("gold")
 
   return (
@@ -23,7 +23,7 @@ function ProductCard({ product }: { product: any }) {
           src={imageUrl} 
           alt={product.name} 
           className="h-full w-full object-cover transition-transform group-hover:scale-110"
-          onError={(e) => { (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/spsnft/skateshop/main/public/images/test.png' }}
+          onError={(e) => { (e.target as HTMLImageElement).src = '/product-placeholder.webp' }}
         />
         {isGold && <div className="absolute top-1 left-1 bg-[#FFD700] text-black text-[8px] font-bold px-1.5 py-0.5 rounded">GOLD</div>}
       </div>
@@ -50,8 +50,8 @@ function ProductCard({ product }: { product: any }) {
         </div>
 
         <button 
-          onClick={() => alert(`Order: ${product.name} ${selectedWeight}g`)}
           className="w-full mt-auto bg-[#34D399] hover:bg-[#34D399]/90 text-black text-[10px] sm:text-xs font-bold py-2 rounded-md transition-colors"
+          onClick={() => alert(`Added ${selectedWeight}g of ${product.name}`)}
         >
           ADD TO ORDER
         </button>
@@ -75,8 +75,8 @@ export default function IndexPage() {
             <ProductCard key={product.id || product.name} product={product} />
           ))
         ) : (
-          <div className="col-span-full text-center py-20 text-neutral-500">
-            Загрузка витрины...
+          <div className="col-span-full text-center py-20 text-neutral-500 font-mono">
+            FETCHING BUDS...
           </div>
         )}
       </section>
