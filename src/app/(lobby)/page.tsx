@@ -2,56 +2,46 @@
 import * as React from "react"
 import { getProducts } from "@/lib/fetchers/product"
 
-// --- РАСШИРЕННАЯ КАРТА ЦВЕТОВ ---
 const GRADE_STYLES: Record<string, { color: string, border: string, bg: string, shadow: string }> = {
-  // Buds
-  "Silver grade": { color: "#C1C1C1", border: "border-[#C1C1C1]/30", bg: "from-[#C1C1C1]/10", shadow: "shadow-[#C1C1C1]/5" },
-  "Golden grade": { color: "#FEC107", border: "border-[#FEC107]/40", bg: "from-[#FEC107]/20", shadow: "shadow-[#FEC107]/10" },
-  "Premium grade": { color: "#193D2E", border: "border-[#193D2E]/60", bg: "from-[#193D2E]/20", shadow: "shadow-[#193D2E]/10" },
-  "Selected Premium": { color: "#5CE1E6", border: "border-[#5CE1E6]/50", bg: "from-[#5CE1E6]/15", shadow: "shadow-[#5CE1E6]/15" },
-  
-  // Concentrates
-  "Hash old school": { color: "#402917", border: "border-[#402917]/60", bg: "from-[#402917]/20", shadow: "shadow-[#402917]/10" },
-  "Hash Fresh frozen": { color: "#3F999C", border: "border-[#3F999C]/50", bg: "from-[#3F999C]/15", shadow: "shadow-[#3F999C]/10" },
-  "Hash Fresh frozen premium": { color: "#5CE1E6", border: "border-[#5CE1E6]/50", bg: "from-[#5CE1E6]/15", shadow: "shadow-[#5CE1E6]/15" },
-  "Live Rosin premium": { color: "#693A7B", border: "border-[#693A7B]/60", bg: "from-[#693A7B]/20", shadow: "shadow-[#693A7B]/15" },
+  "silver grade": { color: "#C1C1C1", border: "border-[#C1C1C1]/50", bg: "from-[#C1C1C1]/20", shadow: "shadow-[#C1C1C1]/20" },
+  "golden grade": { color: "#FEC107", border: "border-[#FEC107]/60", bg: "from-[#FEC107]/30", shadow: "shadow-[#FEC107]/30" },
+  "premium grade": { color: "#193D2E", border: "border-[#193D2E]/80", bg: "from-[#193D2E]/40", shadow: "shadow-[#193D2E]/20" },
+  "selected premium": { color: "#5CE1E6", border: "border-[#5CE1E6]/70", bg: "from-[#5CE1E6]/30", shadow: "shadow-[#5CE1E6]/40" },
+  "hash old school": { color: "#402917", border: "border-[#402917]/80", bg: "from-[#402917]/40", shadow: "shadow-[#402917]/20" },
+  "hash fresh frozen": { color: "#3F999C", border: "border-[#3F999C]/70", bg: "from-[#3F999C]/30", shadow: "shadow-[#3F999C]/20" },
+  "hash fresh frozen premium": { color: "#5CE1E6", border: "border-[#5CE1E6]/70", bg: "from-[#5CE1E6]/30", shadow: "shadow-[#5CE1E6]/40" },
+  "live rosin premium": { color: "#693A7B", border: "border-[#693A7B]/80", bg: "from-[#693A7B]/40", shadow: "shadow-[#693A7B]/30" },
 }
 
-const getStyle = (key: string) => GRADE_STYLES[key] || { color: "#34D399", border: "border-white/10", bg: "from-white/5", shadow: "shadow-transparent" }
-
-// --- Скелетон ---
-function ProductSkeleton() {
-  return (
-    <div className="flex flex-col rounded-2xl border border-white/5 bg-[#121212] p-4 space-y-4 animate-pulse">
-      <div className="aspect-square rounded-xl bg-white/5" />
-      <div className="h-4 w-2/3 bg-white/5 rounded" />
-      <div className="h-10 w-full bg-white/5 rounded-xl" />
-    </div>
-  )
+// Универсальная функция получения стиля
+const getStyle = (val: string) => {
+  const key = String(val || "").toLowerCase().trim();
+  return GRADE_STYLES[key] || { color: "#34D399", border: "border-white/10", bg: "from-white/5", shadow: "shadow-transparent" };
 }
 
-// --- Карточка ---
 function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => void }) {
   const [selectedWeight, setSelectedWeight] = React.useState<string>("1")
   const currentPrice = product.prices?.[selectedWeight] || product.price
-  const style = getStyle(product.subcategory || product.category)
+  
+  // Проверяем стиль и по подкатегории, и по категории
+  const style = getStyle(product.subcategory) || getStyle(product.category);
   const imageUrl = product.image ? `/images/${product.image.split('/').pop()}` : '/product-placeholder.webp'
 
   return (
     <div 
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-500 bg-[#0f0f0f] p-3 sm:p-4 hover:-translate-y-1 ${style.border} ${style.shadow} hover:shadow-2xl`}
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 transition-all duration-500 bg-[#0f0f0f] p-3 sm:p-4 hover:-translate-y-1 ${style.border} ${style.shadow} hover:shadow-2xl`}
     >
-      <div className={`absolute inset-0 bg-gradient-to-br opacity-[0.05] pointer-events-none ${style.bg} to-transparent`} />
+      <div className={`absolute inset-0 bg-gradient-to-br opacity-[0.08] pointer-events-none ${style.bg} to-transparent`} />
       
-      <div className="aspect-square overflow-hidden rounded-xl bg-neutral-900 mb-4 cursor-pointer" onClick={() => onOpen(product)}>
+      <div className="aspect-square overflow-hidden rounded-xl bg-neutral-900 mb-4 cursor-pointer relative z-10" onClick={() => onOpen(product)}>
         <img src={imageUrl} alt={product.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
       </div>
 
       <div className="flex flex-col flex-1 space-y-3 relative z-10 text-left">
-        <h3 className="font-bold text-white text-sm sm:text-base line-clamp-1 cursor-pointer hover:opacity-80" onClick={() => onOpen(product)}>
+        <h3 className="font-bold text-white text-sm sm:text-base line-clamp-1 uppercase italic tracking-tight" onClick={() => onOpen(product)}>
           {product.name}
         </h3>
-        <div className="text-xl font-black" style={{ color: style.color }}>{currentPrice}฿</div>
+        <div className="text-2xl font-black" style={{ color: style.color }}>{currentPrice}฿</div>
         
         <div className="flex gap-1 p-1 bg-white/5 rounded-lg border border-white/5">
           {["1", "5", "10", "20"].map((w) => (
@@ -62,14 +52,13 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
            className="w-full mt-2 py-3 text-black text-[11px] font-black rounded-xl uppercase tracking-widest active:scale-95 transition-all shadow-lg"
            style={{ backgroundColor: style.color }}
         >
-            Купить
+            Добавить
         </button>
       </div>
     </div>
   )
 }
 
-// --- Главная ---
 export default function IndexPage() {
   const [products, setProducts] = React.useState<any[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -92,9 +81,8 @@ export default function IndexPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-20 font-sans">
       <div className="container mx-auto px-4 py-8">
         <header className="mb-10 text-center space-y-8">
-            <h1 className="text-2xl font-black uppercase tracking-[0.3em] opacity-10">Inventory</h1>
+            <h1 className="text-2xl font-black uppercase tracking-[0.3em] opacity-10 italic">Inventory</h1>
             
-            {/* Кнопки основных категорий */}
             <div className="flex flex-wrap justify-center gap-3">
               {!loading && categories.map(cat => (
                 <button 
@@ -107,7 +95,6 @@ export default function IndexPage() {
               ))}
             </div>
 
-            {/* Подкатегории с цветами */}
             {!loading && subcategories.length > 1 && (
               <div className="flex flex-wrap justify-center gap-6 pt-6 border-t border-white/5">
                 {subcategories.map(sub => {
@@ -130,7 +117,7 @@ export default function IndexPage() {
         </header>
 
         <section className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {loading ? Array.from({ length: 8 }).map((_, i) => <ProductSkeleton key={i} />) : filteredProducts.map((p) => <ProductCard key={p.id} product={p} onOpen={setSelectedProduct} />)}
+          {loading ? Array.from({ length: 8 }).map((_, i) => <div key={i} className="aspect-[3/4] rounded-2xl bg-white/5 animate-pulse" />) : filteredProducts.map((p) => <ProductCard key={p.id} product={p} onOpen={setSelectedProduct} />)}
         </section>
       </div>
 
@@ -149,23 +136,21 @@ export default function IndexPage() {
 
               <div className="p-8 sm:p-10 -mt-12 relative z-10 space-y-6 text-left">
                 <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: s.color }}>{selectedProduct.subcategory}</span>
-                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: s.color }}>{selectedProduct.subcategory}</span>
                   <h2 className="text-3xl sm:text-4xl font-black italic uppercase tracking-tighter text-white">{selectedProduct.name}</h2>
                 </div>
                 
                 <p className="text-white/50 text-sm sm:text-base leading-relaxed font-medium">
-                  {selectedProduct.description || "Premium quality product curated for the best experience. Discover the unique terpene profile and effects."}
+                  {selectedProduct.description || "Premium quality product curated for the best experience."}
                 </p>
 
                 <div className="pt-8 flex flex-col sm:flex-row items-center gap-6 border-t border-white/5">
                   <div className="flex flex-col items-center sm:items-start">
-                    <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Price from</span>
+                    <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Price</span>
                     <div className="text-4xl font-black" style={{ color: s.color }}>{selectedProduct.price}฿</div>
                   </div>
                   <button className="flex-1 w-full py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-xl transition-transform active:scale-95" style={{ backgroundColor: s.color, color: '#000' }}>
-                    Добавить в заказ
+                    Заказать
                   </button>
                 </div>
               </div>
