@@ -1,9 +1,7 @@
 "use client"
 import * as React from "react"
 import { getProducts } from "@/lib/fetchers/product"
-import { cn } from "@/lib/utils"
 
-// Карта премиальных стилей
 const GRADE_STYLES: Record<string, { border: string, text: string, shadow: string, bg: string }> = {
   "Golden grade": { 
     border: "border-[#FEC107]/50", 
@@ -56,7 +54,6 @@ function ProductCard({ product }: { product: any }) {
   const fileName = product.image ? product.image.split('/').pop() : null
   const imageUrl = fileName ? `/images/${fileName}` : null
 
-  // Определяем стиль на основе подкатегории или категории
   const style = GRADE_STYLES[product.subcategory] || GRADE_STYLES[product.category] || {
     border: "border-white/5",
     text: "text-white",
@@ -65,25 +62,12 @@ function ProductCard({ product }: { product: any }) {
   }
 
   return (
-    <div className={cn(
-      "group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-500 bg-[#0f0f0f] p-3 sm:p-4",
-      style.border,
-      "hover:shadow-[0_0_30px_-10px] shadow-2xl",
-      style.shadow,
-      "hover:-translate-y-1"
-    )}>
-      {/* Цветной градиент на фоне для "богатства" */}
-      <div className={cn("absolute inset-0 bg-gradient-to-br opacity-[0.03] pointer-events-none", style.bg)} />
-
-      {/* Метка грейда */}
+    <div className={`group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-500 bg-[#0f0f0f] p-3 sm:p-4 hover:shadow-[0_0_30px_-10px] shadow-2xl hover:-translate-y-1 ${style.border} ${style.shadow}`}>
+      <div className={`absolute inset-0 bg-gradient-to-br opacity-[0.03] pointer-events-none ${style.bg}`} />
+      
       {product.subcategory && (
         <div className="absolute top-4 left-4 z-10">
-          <span className={cn(
-            "text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm border",
-            style.text,
-            style.border,
-            "bg-black/60 backdrop-blur-md"
-          )}>
+          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm border bg-black/60 backdrop-blur-md ${style.text} ${style.border}`}>
             {product.subcategory}
           </span>
         </div>
@@ -101,30 +85,83 @@ function ProductCard({ product }: { product: any }) {
         <h3 className="font-bold text-white text-sm sm:text-base line-clamp-1 group-hover:text-[#34D399] transition-colors uppercase italic tracking-tight">
           {product.name}
         </h3>
-        
         <div className="flex items-baseline gap-1">
-          <span className={cn("text-2xl font-black tracking-tighter", style.text)}>{currentPrice}</span>
+          <span className={`text-2xl font-black tracking-tighter ${style.text}`}>{currentPrice}</span>
           <span className="text-[10px] font-bold opacity-40 uppercase">THB</span>
         </div>
-        
         <div className="flex gap-1 p-1 bg-white/5 rounded-lg border border-white/5">
           {["1", "5", "10", "20"].map((w) => (
-            <button key={w} onClick={() => setSelectedWeight(w)} className={cn(
-              "flex-1 py-1.5 text-[10px] font-black rounded transition-all",
-              selectedWeight === w ? "bg-white text-black shadow-lg" : "text-white/30 hover:text-white/60"
-            )}>{w}g</button>
+            <button key={w} onClick={() => setSelectedWeight(w)} className={`flex-1 py-1.5 text-[10px] font-black rounded transition-all ${selectedWeight === w ? "bg-white text-black shadow-lg" : "text-white/30 hover:text-white/60"}`}>
+              {w}g
+            </button>
           ))}
         </div>
-
-        <button className={cn(
-          "w-full mt-2 py-3 text-black text-[11px] font-black rounded-xl transition-all active:scale-95 shadow-lg uppercase tracking-widest",
-          "bg-[#34D399] hover:brightness-110"
-        )}>
-          Add to Cart
+        <button className="w-full mt-2 py-3 bg-[#34D399] hover:brightness-110 text-black text-[11px] font-black rounded-xl transition-all active:scale-95 shadow-lg uppercase tracking-widest">
+          Купить
         </button>
       </div>
     </div>
   )
 }
 
-// ... (остальной код IndexPage остается как в прошлом ответе)
+export default function IndexPage() {
+  const [products, setProducts] = React.useState<any[]>([])
+  const [activeCategory, setActiveCategory] = React.useState<string>("All")
+  const [activeSub, setActiveSub] = React.useState<string>("All")
+
+  React.useEffect(() => {
+    getProducts().then(setProducts)
+  }, [])
+
+  const categories = ["All", ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))]
+  const subcategories = ["All", ...Array.from(new Set(products
+    .filter(p => activeCategory === "All" || p.category === activeCategory)
+    .map(p => p.subcategory)
+    .filter(Boolean)
+  ))]
+
+  const filteredProducts = products.filter(p => {
+    const catMatch = activeCategory === "All" || p.category === activeCategory
+    const subMatch = activeSub === "All" || p.subcategory === activeSub
+    return catMatch && subMatch
+  })
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white pb-20">
+      <div className="container mx-auto px-4 py-8">
+        <header className="mb-10 text-center space-y-6">
+          <h1 className="text-5xl font-black tracking-tighter uppercase italic">Store</h1>
+          <div className="flex flex-wrap justify-center gap-2">
+            {categories.map(cat => (
+              <button
+                key={cat as string}
+                onClick={() => { setActiveCategory(cat as string); setActiveSub("All"); }}
+                className={`px-6 py-2 rounded-full text-sm font-bold border transition-all ${activeCategory === cat ? "bg-[#34D399] border-[#34D399] text-black shadow-[0_0_20px_rgba(52,211,153,0.3)]" : "border-white/10 text-white/40 hover:border-white/30"}`}
+              >
+                {cat as string}
+              </button>
+            ))}
+          </div>
+          {subcategories.length > 1 && (
+            <div className="flex flex-wrap justify-center gap-4 pt-4 border-t border-white/5">
+              {subcategories.map(sub => (
+                <button
+                  key={sub as string}
+                  onClick={() => setActiveSub(sub as string)}
+                  className={`text-[11px] font-black uppercase tracking-widest transition-all ${activeSub === sub ? "text-[#FFD700]" : "text-white/20 hover:text-white/50"}`}
+                >
+                  {sub as string}
+                </button>
+              ))}
+            </div>
+          )}
+        </header>
+        <section className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {filteredProducts.map((product) => (
+            <ProductCard key={product.id || product.name} product={product} />
+          ))}
+        </section>
+      </div>
+    </div>
+  )
+}
