@@ -5,11 +5,11 @@ import { cn } from "@/lib/utils"
 export function ProductCard({ product }: { product: any }) {
   const [selectedWeight, setSelectedWeight] = React.useState<string>("1")
   
-  // Берем цену из конкретного веса, который мы вытянули из таблицы
+  // Берем цену для выбранного веса из объекта prices
   const currentPrice = product.prices?.[selectedWeight] || product.price
 
-  // Путь к папке images в корне public
-  const imageUrl = product.image ? `/images/${product.image}.webp` : null
+  // Берем имя файла из таблицы. Теперь оно должно включать расширение, например "test.png"
+  const imageUrl = product.image ? `/images/${product.image}` : null
 
   return (
     <div className={cn(
@@ -18,13 +18,13 @@ export function ProductCard({ product }: { product: any }) {
         ? "border-[#FFD700] shadow-[0_0_10px_rgba(255,215,0,0.15)]" 
         : "border-neutral-800"
     )}>
-      {/* Картинка товара */}
+      {/* Область картинки */}
       <div className="aspect-square overflow-hidden rounded-lg bg-neutral-900 mb-2">
         <img 
-          src={imageUrl || "/images/placeholder.webp"} 
+          src={imageUrl || "/images/placeholder.png"} 
           alt={product.name} 
           className="h-full w-full object-cover transition-transform group-hover:scale-105"
-          onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder.webp' }}
+          onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder.png' }}
         />
       </div>
 
@@ -34,7 +34,7 @@ export function ProductCard({ product }: { product: any }) {
           <span className="text-[#FFD700] font-mono font-bold text-sm sm:text-base">{currentPrice}฿</span>
         </div>
 
-        {/* Кнопки выбора веса */}
+        {/* Кнопки выбора веса (1g, 5g, 10g, 20g) */}
         <div className="flex flex-wrap gap-1 mb-3">
           {["1", "5", "10", "20"].map((w) => (
             <button
