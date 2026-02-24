@@ -4,34 +4,24 @@ import { getProducts } from "@/lib/fetchers/product"
 
 function ProductCard({ product }: { product: any }) {
   const [selectedWeight, setSelectedWeight] = React.useState<string>("1")
-  
   const currentPrice = product.prices?.[selectedWeight] || product.price
   
-  // Собираем путь: берем имя из таблицы и проверяем, есть ли там уже точка с расширением
-  const imageName = product.image || ""
-  const imageUrl = imageName.includes(".") 
-    ? `/images/${imageName}` 
-    : `/images/${imageName}.png`
-
+  // Очищаем имя файла от лишних папок, если они там есть, и берем только название
+  const fileName = product.image ? product.image.split('/').pop() : null
+  const imageUrl = fileName ? `/images/${fileName}` : null
+  
   const isGold = product.category?.toLowerCase().includes("gold")
 
   return (
     <div className={`group flex flex-col overflow-hidden rounded-xl border transition-all duration-300 bg-[#121212] p-2 sm:p-3 ${
       isGold ? "border-[#FFD700] shadow-[0_0_15px_rgba(255,215,0,0.2)]" : "border-neutral-800"
     }`}>
-      {/* Картинка */}
       <div className="aspect-square overflow-hidden rounded-lg bg-neutral-900 mb-2 relative">
         <img 
-          src={imageUrl} 
+          src={imageUrl || '/product-placeholder.webp'} 
           alt={product.name} 
           className="h-full w-full object-cover transition-transform group-hover:scale-110"
-          onError={(e) => { 
-            const target = e.target as HTMLImageElement
-            // Если images/bndsmall.png не найден, пробуем корень public (на всякий случай)
-            if (!target.src.includes('placeholder')) {
-               target.src = `/${imageName}`
-            }
-          }}
+          onError={(e) => { (e.target as HTMLImageElement).src = '/product-placeholder.webp' }}
         />
         {isGold && <div className="absolute top-1 left-1 bg-[#FFD700] text-black text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg">GOLD</div>}
       </div>
@@ -42,7 +32,6 @@ function ProductCard({ product }: { product: any }) {
           <span className="text-[#FFD700] font-mono font-bold text-sm sm:text-base">{currentPrice}฿</span>
         </div>
 
-        {/* Кнопки выбора веса */}
         <div className="flex flex-wrap gap-1">
           {["1", "5", "10", "20"].map((w) => (
             <button
@@ -59,7 +48,7 @@ function ProductCard({ product }: { product: any }) {
 
         <button 
           className="w-full mt-auto bg-[#34D399] hover:bg-[#34D399]/90 text-black text-[10px] sm:text-xs font-bold py-2 rounded-md transition-colors"
-          onClick={() => alert(`Added ${selectedWeight}g of ${product.name}`)}
+          onClick={() => alert(`Order: ${product.name} ${selectedWeight}g`)}
         >
           ADD TO ORDER
         </button>
@@ -84,7 +73,7 @@ export default function IndexPage() {
           ))
         ) : (
           <div className="col-span-full text-center py-20 text-neutral-500 font-mono text-xs">
-            CONNECTING TO INVENTORY...
+            REFRESHING STOCK...
           </div>
         )}
       </section>
