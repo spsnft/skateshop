@@ -5,12 +5,14 @@ import { getProducts } from "@/lib/fetchers/product"
 function ProductCard({ product }: { product: any }) {
   const [selectedWeight, setSelectedWeight] = React.useState<string>("1")
   
-  // Берем цену для выбранного веса из объекта prices, который мы мапим в fetcher
   const currentPrice = product.prices?.[selectedWeight] || product.price
   
-  // Исправленный путь: так как bndsmall.png лежит прямо в public, убираем /images/
-  // Если в таблице написано "bndsmall.png", то путь будет "/bndsmall.png"
-  const imageUrl = product.image ? `/${product.image}` : null
+  // Собираем путь: берем имя из таблицы и проверяем, есть ли там уже точка с расширением
+  const imageName = product.image || ""
+  const imageUrl = imageName.includes(".") 
+    ? `/images/${imageName}` 
+    : `/images/${imageName}.png`
+
   const isGold = product.category?.toLowerCase().includes("gold")
 
   return (
@@ -23,13 +25,19 @@ function ProductCard({ product }: { product: any }) {
           src={imageUrl} 
           alt={product.name} 
           className="h-full w-full object-cover transition-transform group-hover:scale-110"
-          onError={(e) => { (e.target as HTMLImageElement).src = '/product-placeholder.webp' }}
+          onError={(e) => { 
+            const target = e.target as HTMLImageElement
+            // Если images/bndsmall.png не найден, пробуем корень public (на всякий случай)
+            if (!target.src.includes('placeholder')) {
+               target.src = `/${imageName}`
+            }
+          }}
         />
-        {isGold && <div className="absolute top-1 left-1 bg-[#FFD700] text-black text-[8px] font-bold px-1.5 py-0.5 rounded">GOLD</div>}
+        {isGold && <div className="absolute top-1 left-1 bg-[#FFD700] text-black text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg">GOLD</div>}
       </div>
 
       <div className="flex flex-col flex-1 space-y-2">
-        <div>
+        <div className="flex flex-col">
           <h3 className="font-bold text-white text-xs sm:text-sm line-clamp-1">{product.name}</h3>
           <span className="text-[#FFD700] font-mono font-bold text-sm sm:text-base">{currentPrice}฿</span>
         </div>
@@ -75,8 +83,8 @@ export default function IndexPage() {
             <ProductCard key={product.id || product.name} product={product} />
           ))
         ) : (
-          <div className="col-span-full text-center py-20 text-neutral-500 font-mono">
-            FETCHING BUDS...
+          <div className="col-span-full text-center py-20 text-neutral-500 font-mono text-xs">
+            CONNECTING TO INVENTORY...
           </div>
         )}
       </section>
