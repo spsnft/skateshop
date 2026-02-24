@@ -112,7 +112,7 @@ export default function IndexPage() {
   const handleCheckout = () => {
     const text = `🚀 *Новый заказ:*\n\n${items.map(i => `• ${i.name} (${i.weight}g) x${i.quantity} — ${i.price * i.quantity}฿`).join('\n')}\n\n💰 *Итого: ${totalPrice}฿*`;
     // Замени на свой ник
-    window.open(`https://t.me/YOUR_TG_NICKNAME?text=${encodeURIComponent(text)}`, '_blank');
+    window.open(`https://t.me/spacenft?text=${encodeURIComponent(text)}`, '_blank');
   }
 
   return (
