@@ -1,38 +1,24 @@
-import * as React from "react"
-import { Lobby } from "./_components/lobby"
-import { LobbySkeleton } from "./_components/lobby-skeleton"
-
-// Это функция-заглушка, пока мы не настроили реальный импорт из таблицы
-async function getTableProducts() {
-  const GOOGLE_SCRIPT_URL = "ТВОЯ_ССЫЛКА_ИЗ_APPS_SCRIPT" // Мы вставим её следующим шагом
-  try {
-    const res = await fetch(GOOGLE_SCRIPT_URL, { next: { revalidate: 60 } })
-    const data = await res.json()
-    return data
-  } catch (error) {
-    console.error("Failed to fetch products:", error)
-    return []
-  }
-}
+import { getProducts } from "@/lib/fetchers/product"
+import { Shell } from "@/components/shells/shell"
+import { ProductCard } from "@/components/cards/product-card"
 
 export default async function IndexPage() {
-  // Запускаем получение товаров
-  const productsPromise = getTableProducts()
-  
-  // Категории пока оставим пустым массивом или статикой, 
-  // Lobby их подхватит
-  const categoriesPromise = Promise.resolve([])
-  const storesPromise = Promise.resolve([])
-  const githubStarsPromise = Promise.resolve(0)
+  const products = await getProducts()
 
   return (
-    <React.Suspense fallback={<LobbySkeleton />}>
-      <Lobby
-        githubStarsPromise={githubStarsPromise}
-        productsPromise={productsPromise}
-        categoriesPromise={categoriesPromise}
-        storesPromise={storesPromise}
-      />
-    </React.Suspense>
+    <Shell className="max-w-6xl">
+      <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {products.length > 0 ? (
+          products.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))
+        ) : (
+          <div className="col-span-full text-center">
+            <h2 className="text-2xl font-bold">Товары не найдены</h2>
+            <p className="text-muted-foreground">Проверьте связь с таблицей</p>
+          </div>
+        )}
+      </section>
+    </Shell>
   )
 }
