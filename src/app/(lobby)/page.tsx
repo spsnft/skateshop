@@ -6,11 +6,16 @@ export default async function IndexPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* grid-cols-2 на мобиле, 4 на десктопе */}
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-        {products?.map((product: any) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
+        {products?.length > 0 ? (
+          products.map((product: any) => (
+            <ProductCard key={product.id} product={product} />
+          ))
+        ) : (
+          <div className="col-span-full text-center py-20 text-neutral-500">
+            Товары загружаются из таблицы...
+          </div>
+        )}
       </section>
     </div>
   )
