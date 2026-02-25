@@ -4,9 +4,9 @@ import Image from "next/image"
 import { getProducts } from "@/lib/fetchers/product"
 import { ShoppingCart, Trash2, X, Plus, Minus, Info, Phone, Send, CheckCircle2 } from "lucide-react"
 import { create } from "zustand"
-import { motion, AnimatePresence } from "framer-motion" // Добавили для анимаций
+import { motion, AnimatePresence } from "framer-motion"
 
-// --- КОРЗИНА ---
+// --- КОРЗИНА (ZUSTAND) ---
 interface CartItem {
   id: string; name: string; price: number; weight: string; quantity: number; image: string;
 }
@@ -47,6 +47,7 @@ const getStyle = (val: string) => {
   return GRADE_STYLES[lowVal] || { color: "#34D399", border: "border-white/10", bg: "bg-white/5" };
 }
 
+// --- КОМПОНЕНТ КАРТОЧКИ С ИСПРАВЛЕННОЙ АНИМАЦИЕЙ ---
 function ProductCard({ product, onOpen, index }: { product: any, onOpen: (p: any) => void, index: number }) {
   const [weight, setWeight] = React.useState("1");
   const addItem = useCart(s => s.addItem);
@@ -55,9 +56,15 @@ function ProductCard({ product, onOpen, index }: { product: any, onOpen: (p: any
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
+      layout
+      initial={{ opacity: 0, y: 15 }} // Начало снизу на 15px
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.05 }} // Эффект каскада
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ 
+        duration: 0.3, 
+        delay: index * 0.03, // Быстрый каскад
+        ease: "easeOut"
+      }}
       className={`group relative flex flex-col rounded-[1.5rem] border p-2.5 transition-all duration-500 backdrop-blur-xl ${style.bg} ${style.border}`}
     >
       <button onClick={() => onOpen(product)} className="absolute top-4 right-4 z-20 p-1.5 bg-black/40 rounded-full text-white/50 hover:text-white transition-colors">
@@ -88,7 +95,6 @@ export default function IndexPage() {
   const [isCartOpen, setIsCartOpen] = React.useState(false)
   const [selectedProduct, setSelectedProduct] = React.useState<any | null>(null)
   
-  // Поля формы и статус заказа
   const [tgUser, setTgUser] = React.useState("")
   const [phone, setPhone] = React.useState("")
   const [isOrdered, setIsOrdered] = React.useState(false)
@@ -106,9 +112,7 @@ export default function IndexPage() {
 
   const handleCheckout = () => {
     const text = `🚀 *НОВЫЙ ЗАКАЗ:*\n\n👤 *TG:* ${tgUser || "—"}\n📞 *Тел:* ${phone || "—"}\n\n🛒 *Товары:*\n${items.map(i => `• ${i.name} (${i.weight}g) x${i.quantity}`).join('\n')}\n\n💰 *ИТОГО: ${totalPrice}฿*`;
-    
-    setIsOrdered(true); // Показываем успех
-    
+    setIsOrdered(true);
     setTimeout(() => {
       window.open(`https://t.me/YOUR_TG_NICKNAME?text=${encodeURIComponent(text)}`, '_blank');
       setIsOrdered(false);
@@ -120,24 +124,22 @@ export default function IndexPage() {
   const isButtonDisabled = items.length === 0 || (!tgUser.trim() && !phone.trim()) || isOrdered;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pb-20 font-sans selection:bg-emerald-500/20">
+    <div className="min-h-screen bg-[#050505] text-white pb-20 font-sans selection:bg-emerald-500/20 overflow-x-hidden">
       <div className="container mx-auto px-4 py-6 relative">
         <header className="flex justify-between items-center mb-8">
           <div className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 italic">Inventory</div>
-          <button onClick={() => setIsCartOpen(true)} className="relative p-3.5 bg-white/5 rounded-2xl border border-white/10">
+          <button onClick={() => setIsCartOpen(true)} className="relative p-3.5 bg-white/5 rounded-2xl border border-white/10 z-[50]">
             <ShoppingCart size={18} />
             {items.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-400 text-black text-[9px] font-black rounded-full flex items-center justify-center animate-bounce">{items.length}</span>}
           </button>
         </header>
 
-        {/* Навигация */}
-        <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar">
+        <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar sticky top-0 bg-[#050505]/80 backdrop-blur-lg z-[40] py-2">
           {!loading && categories.map(cat => (
             <button key={cat as string} onClick={() => { setActiveCategory(cat as string); setActiveSub("All"); }} className={`px-7 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${activeCategory === cat ? "bg-white text-black border-white shadow-xl" : "border-white/5 text-white/20"}`}>{cat as string}</button>
           ))}
         </div>
 
-        {/* Подкатегории */}
         <AnimatePresence mode="wait">
           {!loading && subcategories.length > 1 && (
             <motion.div 
@@ -158,73 +160,77 @@ export default function IndexPage() {
           )}
         </AnimatePresence>
 
-        <motion.section layout className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <AnimatePresence>
-            {loading ? [1,2,3,4,5,6].map(i => <div key={i} className="aspect-[3/4.5] rounded-[1.5rem] bg-white/5 animate-pulse" />) 
-                     : filtered.map((p, idx) => <ProductCard key={p.id} product={p} index={idx} onOpen={setSelectedProduct} />)}
-          </AnimatePresence>
-        </motion.section>
+        <section className="relative">
+          <motion.div 
+            layout 
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 overflow-hidden pt-2"
+          >
+            <AnimatePresence mode="popLayout">
+              {loading ? [1,2,3,4,5,6].map(i => <div key={i} className="aspect-[3/4.5] rounded-[1.5rem] bg-white/5 animate-pulse" />) 
+                       : filtered.map((p, idx) => <ProductCard key={p.id} product={p} index={idx} onOpen={setSelectedProduct} />)}
+            </AnimatePresence>
+          </motion.div>
+        </section>
       </div>
 
       {/* ШТОРКА КОРЗИНЫ */}
-      {isCartOpen && (
-        <div className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-2xl flex justify-end">
-          <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} className="h-full w-full max-w-md bg-[#0a0a0a] border-l border-white/10 p-6 flex flex-col shadow-2xl">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-black uppercase italic">Корзина</h2>
-              <button onClick={() => setIsCartOpen(false)} className="p-2 bg-white/5 rounded-full"><X size={18}/></button>
-            </div>
-
-            {isOrdered ? (
-              <div className="flex-1 flex flex-col items-center justify-center space-y-4 animate-in zoom-in-95">
-                <CheckCircle2 size={60} className="text-emerald-400" />
-                <h3 className="text-xl font-black uppercase italic">Заказ принят!</h3>
-                <p className="text-white/40 text-xs text-center">Переходим в Telegram для подтверждения...</p>
+      <AnimatePresence>
+        {isCartOpen && (
+          <div className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-2xl flex justify-end">
+            <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="h-full w-full max-w-md bg-[#0a0a0a] border-l border-white/10 p-6 flex flex-col shadow-2xl">
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-black uppercase italic">Корзина</h2>
+                <button onClick={() => setIsCartOpen(false)} className="p-2 bg-white/5 rounded-full"><X size={18}/></button>
               </div>
-            ) : (
-              <>
-                <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar">
-                  {items.map(item => (
-                    <div key={item.id + item.weight} className="flex gap-4 p-3 bg-white/5 rounded-2xl border border-white/5">
-                      <div className="w-16 h-16 relative rounded-xl overflow-hidden bg-black flex-shrink-0">
-                        <Image src={item.image ? `/images/${item.image.split('/').pop()}` : '/product-placeholder.webp'} alt="" fill className="object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0 text-left">
-                        <div className="text-[8px] font-black uppercase text-white/30 mb-1">{item.weight}g</div>
-                        <div className="text-[11px] font-bold uppercase italic truncate mb-2">{item.name}</div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center bg-black/40 rounded-lg border border-white/5">
-                            <button onClick={() => updateQuantity(item.id, item.weight, -1)} className="p-1.5 text-white/40"><Minus size={10}/></button>
-                            <span className="text-[10px] font-black w-4 text-center">{item.quantity}</span>
-                            <button onClick={() => updateQuantity(item.id, item.weight, 1)} className="p-1.5 text-white/40"><Plus size={10}/></button>
-                          </div>
-                          <div className="text-sm font-black text-white">{item.price * item.quantity}฿</div>
+
+              {isOrdered ? (
+                <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+                  <CheckCircle2 size={60} className="text-emerald-400" />
+                  <h3 className="text-xl font-black uppercase italic">Заказ принят!</h3>
+                </div>
+              ) : (
+                <>
+                  <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar">
+                    {items.map(item => (
+                      <div key={item.id + item.weight} className="flex gap-4 p-3 bg-white/5 rounded-2xl border border-white/5">
+                        <div className="w-16 h-16 relative rounded-xl overflow-hidden bg-black flex-shrink-0">
+                          <Image src={item.image ? `/images/${item.image.split('/').pop()}` : '/product-placeholder.webp'} alt="" fill className="object-cover" />
                         </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="text-[8px] font-black uppercase text-white/30 mb-1">{item.weight}g</div>
+                          <div className="text-[11px] font-bold uppercase italic truncate mb-2">{item.name}</div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center bg-black/40 rounded-lg border border-white/5">
+                              <button onClick={() => updateQuantity(item.id, item.weight, -1)} className="p-1.5 text-white/40"><Minus size={10}/></button>
+                              <span className="text-[10px] font-black w-4 text-center">{item.quantity}</span>
+                              <button onClick={() => updateQuantity(item.id, item.weight, 1)} className="p-1.5 text-white/40"><Plus size={10}/></button>
+                            </div>
+                            <div className="text-sm font-black text-white">{item.price * item.quantity}฿</div>
+                          </div>
+                        </div>
+                        <button onClick={() => removeItem(item.id, item.weight)} className="text-white/10 hover:text-red-500 ml-2"><Trash2 size={14}/></button>
                       </div>
-                      <button onClick={() => removeItem(item.id, item.weight)} className="text-white/10 hover:text-red-500 ml-2"><Trash2 size={14}/></button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-4 pt-6 border-t border-white/5">
-                  <input type="text" placeholder="Ваш TG @nick" value={tgUser} onChange={(e) => setTgUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-xs font-bold outline-none" />
-                  <input type="text" placeholder="Телефон" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-xs font-bold outline-none" />
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-[9px] font-black uppercase text-white/20 tracking-widest">Total</span>
-                    <span className="text-4xl font-black tracking-tighter">{totalPrice}฿</span>
+                    ))}
                   </div>
-                  <button onClick={handleCheckout} disabled={isButtonDisabled} className={`w-full py-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl transition-all ${isButtonDisabled ? "bg-white/5 text-white/10" : "bg-white text-black"}`}>Заказать</button>
-                </div>
-              </>
-            )}
-          </motion.div>
-        </div>
-      )}
+                  <div className="space-y-4 pt-6 border-t border-white/5">
+                    <input type="text" placeholder="Ваш TG @nick" value={tgUser} onChange={(e) => setTgUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-xs font-bold outline-none" />
+                    <input type="text" placeholder="Телефон" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-xs font-bold outline-none" />
+                  </div>
+                  <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-[9px] font-black uppercase text-white/20 tracking-widest">Total</span>
+                      <span className="text-4xl font-black tracking-tighter">{totalPrice}฿</span>
+                    </div>
+                    <button onClick={handleCheckout} disabled={isButtonDisabled} className={`w-full py-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl transition-all ${isButtonDisabled ? "bg-white/5 text-white/10" : "bg-white text-black"}`}>Заказать</button>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
-      {/* DRAWER (Шторка товара) */}
+      {/* DRAWER */}
       <AnimatePresence>
         {selectedProduct && (
           <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-xl flex items-end sm:items-center justify-center" onClick={() => setSelectedProduct(null)}>
