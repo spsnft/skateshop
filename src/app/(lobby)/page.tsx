@@ -4,9 +4,9 @@ import Image from "next/image"
 import { getProducts } from "@/lib/fetchers/product"
 import { ShoppingCart, Trash2, X, Plus, Minus, Info, Phone, Send, CheckCircle2 } from "lucide-react"
 import { create } from "zustand"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 
-// --- КОРЗИНА (ZUSTAND) ---
+// --- КОРЗИНА ---
 interface CartItem {
   id: string; name: string; price: number; weight: string; quantity: number; image: string;
 }
@@ -47,7 +47,6 @@ const getStyle = (val: string) => {
   return GRADE_STYLES[lowVal] || { color: "#34D399", border: "border-white/10", bg: "bg-white/5" };
 }
 
-// --- КОМПОНЕНТ КАРТОЧКИ С ИСПРАВЛЕННОЙ АНИМАЦИЕЙ ---
 function ProductCard({ product, onOpen, index }: { product: any, onOpen: (p: any) => void, index: number }) {
   const [weight, setWeight] = React.useState("1");
   const addItem = useCart(s => s.addItem);
@@ -56,16 +55,10 @@ function ProductCard({ product, onOpen, index }: { product: any, onOpen: (p: any
 
   return (
     <motion.div 
-      layout
-      initial={{ opacity: 0, y: 15 }} // Начало снизу на 15px
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ 
-        duration: 0.3, 
-        delay: index * 0.03, // Быстрый каскад
-        ease: "easeOut"
-      }}
-      className={`group relative flex flex-col rounded-[1.5rem] border p-2.5 transition-all duration-500 backdrop-blur-xl ${style.bg} ${style.border}`}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.02, 0.4) }}
+      className={`group relative flex flex-col rounded-[1.5rem] border p-2.5 backdrop-blur-xl ${style.bg} ${style.border}`}
     >
       <button onClick={() => onOpen(product)} className="absolute top-4 right-4 z-20 p-1.5 bg-black/40 rounded-full text-white/50 hover:text-white transition-colors">
         <Info size={14} />
@@ -82,7 +75,7 @@ function ProductCard({ product, onOpen, index }: { product: any, onOpen: (p: any
           ))}
         </div>
       </div>
-      <button onClick={() => addItem({ id: product.id, name: product.name, price, weight, quantity: 1, image: product.image })} className="w-full mt-3 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest active:scale-95 transition-all" style={{ backgroundColor: style.color, color: '#000' }}>В корзину</button>
+      <button onClick={() => addItem({ id: product.id, name: product.name, price, weight, quantity: 1, image: product.image })} className="w-full mt-3 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest active:scale-95 transition-all shadow-lg" style={{ backgroundColor: style.color, color: '#000' }}>В корзину</button>
     </motion.div>
   )
 }
@@ -102,6 +95,11 @@ export default function IndexPage() {
   const { items, updateQuantity, removeItem, clearCart } = useCart()
   const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 
+  const { scrollY } = useScroll()
+  const headerOpacity = useTransform(scrollY, [0, 40], [1, 0])
+  const headerY = useTransform(scrollY, [0, 40], [0, -10])
+  const navBackground = useTransform(scrollY, [0, 40], ["rgba(5, 5, 5, 0)", "rgba(5, 5, 5, 0.9)"])
+
   React.useEffect(() => {
     getProducts().then(data => { setProducts(data); setLoading(false); })
   }, [])
@@ -114,43 +112,47 @@ export default function IndexPage() {
     const text = `🚀 *НОВЫЙ ЗАКАЗ:*\n\n👤 *TG:* ${tgUser || "—"}\n📞 *Тел:* ${phone || "—"}\n\n🛒 *Товары:*\n${items.map(i => `• ${i.name} (${i.weight}g) x${i.quantity}`).join('\n')}\n\n💰 *ИТОГО: ${totalPrice}฿*`;
     setIsOrdered(true);
     setTimeout(() => {
-      window.open(`https://t.me/YOUR_TG_NICKNAME?text=${encodeURIComponent(text)}`, '_blank');
+      window.open(`https://t.me/phuketbnd?text=${encodeURIComponent(text)}`, '_blank');
       setIsOrdered(false);
       setIsCartOpen(false);
       clearCart();
-    }, 1500);
+    }, 1200);
   }
 
   const isButtonDisabled = items.length === 0 || (!tgUser.trim() && !phone.trim()) || isOrdered;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pb-20 font-sans selection:bg-emerald-500/20 overflow-x-hidden">
-      <div className="container mx-auto px-4 py-6 relative">
-        <header className="flex justify-between items-center mb-8">
-          <div className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 italic">Inventory</div>
-          <button onClick={() => setIsCartOpen(true)} className="relative p-3.5 bg-white/5 rounded-2xl border border-white/10 z-[50]">
-            <ShoppingCart size={18} />
-            {items.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-400 text-black text-[9px] font-black rounded-full flex items-center justify-center animate-bounce">{items.length}</span>}
-          </button>
-        </header>
+    <div className="min-h-screen bg-[#050505] text-white pb-20 font-sans selection:bg-emerald-500/20">
+      
+      <div className="sticky top-0 z-[100]">
+        <motion.div style={{ backgroundColor: navBackground }} className="backdrop-blur-xl pt-6 pb-2 px-4">
+          <div className="container mx-auto">
+            <motion.header style={{ opacity: headerOpacity, y: headerY }} className="flex justify-between items-center mb-6">
+              <div className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 italic">Inventory</div>
+              <button onClick={() => setIsCartOpen(true)} className="relative p-3.5 bg-white/5 rounded-2xl border border-white/10 shadow-xl">
+                <ShoppingCart size={18} />
+                {items.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-400 text-black text-[9px] font-black rounded-full flex items-center justify-center animate-bounce">{items.length}</span>}
+              </button>
+            </motion.header>
 
-        <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar sticky top-0 bg-[#050505]/80 backdrop-blur-lg z-[40] py-2">
-          {!loading && categories.map(cat => (
-            <button key={cat as string} onClick={() => { setActiveCategory(cat as string); setActiveSub("All"); }} className={`px-7 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${activeCategory === cat ? "bg-white text-black border-white shadow-xl" : "border-white/5 text-white/20"}`}>{cat as string}</button>
-          ))}
-        </div>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+              {!loading && categories.map(cat => (
+                <button key={cat as string} onClick={() => { setActiveCategory(cat as string); setActiveSub("All"); }} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all flex-shrink-0 ${activeCategory === cat ? "bg-white text-black border-white shadow-xl" : "border-white/5 text-white/20"}`}>{cat as string}</button>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
+      <div className="container mx-auto px-4">
         <AnimatePresence mode="wait">
           {!loading && subcategories.length > 1 && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-              className="flex gap-5 mb-8 overflow-x-auto no-scrollbar py-2 border-y border-white/5"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-5 mb-8 overflow-x-auto no-scrollbar py-2 border-y border-white/5">
               {subcategories.map(sub => {
                 const s = getStyle(sub as string);
                 const isActive = activeSub === sub;
                 return (
-                  <button key={sub as string} onClick={() => setActiveSub(sub as string)} className="text-[9px] font-black uppercase tracking-widest transition-all relative py-1" style={{ color: isActive ? s.color : 'rgba(255,255,255,0.2)' }}>
+                  <button key={sub as string} onClick={() => setActiveSub(sub as string)} className="text-[9px] font-black uppercase tracking-widest transition-all relative py-1 flex-shrink-0" style={{ color: isActive ? s.color : 'rgba(255,255,255,0.2)' }}>
                     {sub as string}
                     {isActive && <motion.div layoutId="underline" className="absolute -bottom-1 left-0 right-0 h-px" style={{ backgroundColor: s.color }} />}
                   </button>
@@ -160,38 +162,32 @@ export default function IndexPage() {
           )}
         </AnimatePresence>
 
-        <section className="relative">
-          <motion.div 
-            layout 
-            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 overflow-hidden pt-2"
-          >
-            <AnimatePresence mode="popLayout">
-              {loading ? [1,2,3,4,5,6].map(i => <div key={i} className="aspect-[3/4.5] rounded-[1.5rem] bg-white/5 animate-pulse" />) 
-                       : filtered.map((p, idx) => <ProductCard key={p.id} product={p} index={idx} onOpen={setSelectedProduct} />)}
-            </AnimatePresence>
-          </motion.div>
+        <section className="mt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 overflow-hidden">
+            {loading ? [1,2,3,4,5,6].map(i => <div key={i} className="aspect-[3/4.5] rounded-[1.5rem] bg-white/5 animate-pulse" />) 
+                     : filtered.map((p, idx) => <ProductCard key={p.id} product={p} index={idx} onOpen={setSelectedProduct} />)}
+          </div>
         </section>
       </div>
 
-      {/* ШТОРКА КОРЗИНЫ */}
       <AnimatePresence>
         {isCartOpen && (
           <div className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-2xl flex justify-end">
-            <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="h-full w-full max-w-md bg-[#0a0a0a] border-l border-white/10 p-6 flex flex-col shadow-2xl">
+            <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="h-full w-full max-w-md bg-[#0a0a0a] border-l border-white/10 p-6 flex flex-col shadow-2xl relative">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-black uppercase italic">Корзина</h2>
                 <button onClick={() => setIsCartOpen(false)} className="p-2 bg-white/5 rounded-full"><X size={18}/></button>
               </div>
-
               {isOrdered ? (
                 <div className="flex-1 flex flex-col items-center justify-center space-y-4">
-                  <CheckCircle2 size={60} className="text-emerald-400" />
+                  <CheckCircle2 size={80} className="text-emerald-400" />
                   <h3 className="text-xl font-black uppercase italic">Заказ принят!</h3>
                 </div>
               ) : (
                 <>
                   <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar">
-                    {items.map(item => (
+                    {items.length === 0 ? <div className="h-full flex flex-col items-center justify-center opacity-10"><ShoppingCart size={40} /><p className="text-[10px] font-black uppercase tracking-widest mt-4">Пусто</p></div> 
+                    : items.map(item => (
                       <div key={item.id + item.weight} className="flex gap-4 p-3 bg-white/5 rounded-2xl border border-white/5">
                         <div className="w-16 h-16 relative rounded-xl overflow-hidden bg-black flex-shrink-0">
                           <Image src={item.image ? `/images/${item.image.split('/').pop()}` : '/product-placeholder.webp'} alt="" fill className="object-cover" />
@@ -230,21 +226,23 @@ export default function IndexPage() {
         )}
       </AnimatePresence>
 
-      {/* DRAWER */}
       <AnimatePresence>
         {selectedProduct && (
-          <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-xl flex items-end sm:items-center justify-center" onClick={() => setSelectedProduct(null)}>
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="bg-[#0a0a0a] w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2rem] border-t sm:border border-white/10 overflow-hidden relative" onClick={e => e.stopPropagation()}>
-              <div className="aspect-square relative w-full">
+          <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-xl flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setSelectedProduct(null)}>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="bg-[#0a0a0a] w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2rem] border-t sm:border border-white/10 overflow-hidden relative shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="aspect-square relative w-full border-b border-white/5">
                 <Image src={selectedProduct.image ? `/images/${selectedProduct.image.split('/').pop()}` : '/product-placeholder.webp'} alt="" fill className="object-cover" />
                 <button onClick={() => setSelectedProduct(null)} className="absolute top-6 right-6 p-2 bg-black/40 rounded-full text-white/70 backdrop-blur-md"><X size={20} /></button>
               </div>
               <div className="p-8 space-y-5 text-left">
-                <h2 className="text-3xl font-black italic uppercase tracking-tighter">{selectedProduct.name}</h2>
-                <p className="text-white/40 text-xs leading-relaxed italic">{selectedProduct.description || "Premium selection."}</p>
-                <div className="pt-4 flex justify-between items-center">
-                   <div className="text-4xl font-black" style={{ color: getStyle(selectedProduct.subcategory).color }}>{selectedProduct.price}฿</div>
-                   <button onClick={() => { useCart.getState().addItem({ id: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price, weight: "1", quantity: 1, image: selectedProduct.image }); setSelectedProduct(null); }} className="px-10 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl" style={{ backgroundColor: getStyle(selectedProduct.subcategory).color, color: '#000' }}>В корзину</button>
+                <div className="space-y-1">
+                  <span className="text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: getStyle(selectedProduct.subcategory).color }}>{selectedProduct.subcategory}</span>
+                  <h2 className="text-3xl font-black italic uppercase tracking-tighter">{selectedProduct.name}</h2>
+                </div>
+                <p className="text-white/40 text-xs leading-relaxed italic">{selectedProduct.description || "Premium Phuket selection."}</p>
+                <div className="pt-4 flex justify-between items-center gap-4">
+                   <div className="text-4xl font-black tracking-tighter" style={{ color: getStyle(selectedProduct.subcategory).color }}>{selectedProduct.price}฿</div>
+                   <button onClick={() => { useCart.getState().addItem({ id: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price, weight: "1", quantity: 1, image: selectedProduct.image }); setSelectedProduct(null); }} className="flex-1 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all" style={{ backgroundColor: getStyle(selectedProduct.subcategory).color, color: '#000' }}>В корзину</button>
                 </div>
               </div>
             </motion.div>
