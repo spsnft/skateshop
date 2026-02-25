@@ -6,7 +6,7 @@ export type SiteConfig = typeof siteConfig
 
 const links = {
   // Твой ник прописан
-  telegram: "https://t.me/spacenft", 
+  telegram: "https://t.me/phuketbnd", 
 }
 
 export const siteConfig = {
