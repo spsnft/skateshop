@@ -17,7 +17,7 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { motion, AnimatePresence } from "framer-motion"
 
-// --- CONFIG (Берем из Environment Variables) ---
+// --- CONFIG ---
 const TG_TOKEN = process.env.NEXT_PUBLIC_TG_TOKEN;
 const TG_CHAT_ID = process.env.NEXT_PUBLIC_TG_CHAT_ID;
 
@@ -63,10 +63,11 @@ const Badge = ({ type }: { type: string }) => {
     new: "bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)]",
     hit: "bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]"
   };
-  if (!type || !styles[type.toLowerCase()]) return null;
+  const safeType = String(type || "").toLowerCase().trim();
+  if (!safeType || !styles[safeType]) return null;
   return (
-    <div className={`absolute -top-1 -left-1 z-30 px-3 py-1 rounded-br-xl rounded-tl-xl text-[8px] font-black uppercase tracking-tighter italic text-white ${styles[type.toLowerCase()]}`}>
-      {type}
+    <div className={`absolute -top-1 -left-1 z-30 px-3 py-1 rounded-br-xl rounded-tl-xl text-[8px] font-black uppercase tracking-tighter italic text-white ${styles[safeType]}`}>
+      {safeType}
     </div>
   );
 };
@@ -79,7 +80,7 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
   const price = product.prices?.[weight] || product.price;
 
   return (
-    <div className={`relative flex flex-col rounded-[1.8rem] border p-2.5 backdrop-blur-xl transition-all ${style.bg} ${style.border}`}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`relative flex flex-col rounded-[1.8rem] border p-2.5 backdrop-blur-xl transition-all ${style.bg} ${style.border}`}>
       <Badge type={product.badge} />
       <button onClick={() => onOpen(product)} className="absolute top-4 right-4 z-20 p-2 bg-black/40 rounded-full text-white/40"><Info size={12} /></button>
       <div className="aspect-square relative overflow-hidden rounded-[1.4rem] bg-black/60 mb-3 cursor-pointer" onClick={() => onOpen(product)}>
@@ -101,7 +102,7 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
       >
         {isAdded ? "Добавлено" : "В корзину"}
       </button>
-    </div>
+    </motion.div>
   );
 }
 
@@ -109,7 +110,7 @@ export default function IndexPage() {
   const [products, setProducts] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [view, setView] = React.useState<"landing" | "shop">("landing");
-  const [activeCategory, setActiveCategory] = React.useState("Buds");
+  const [activeCategory, setActiveCategory] = React.useState("");
   const [isCartOpen, setIsCartOpen] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = React.useState<any | null>(null);
   const [orderStatus, setOrderStatus] = React.useState<"idle" | "loading" | "success">("idle");
@@ -119,14 +120,20 @@ export default function IndexPage() {
   const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   React.useEffect(() => {
-    getProducts().then(data => { setProducts(data); setLoading(false); });
+    getProducts().then(data => { 
+      setProducts(data); 
+      setLoading(false); 
+      if (data.length > 0) setActiveCategory(data[0].category);
+    });
   }, []);
 
+  const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+  // Поиск хитов с защитой от пустых значений
+  const hitProducts = products.filter(p => String(p.badge || "").toLowerCase().trim() === "hit").slice(0, 2);
+  const displayHits = hitProducts.length > 0 ? hitProducts : products.slice(0, 2);
+
   const handleSendOrder = async () => {
-    if (!TG_TOKEN || !TG_CHAT_ID) {
-        alert("Ошибка конфигурации. Проверьте переменные в Vercel.");
-        return;
-    }
+    if (!TG_TOKEN || !TG_CHAT_ID) return;
     setOrderStatus("loading");
     const message = `🚀 *НОВЫЙ ЗАКАЗ*\n\n👤 Клиент: ${tgUser || "Аноним"}\n\n🛒 *Товары:*\n${items.map(i => `• ${i.name} (${i.weight}g) x${i.quantity}`).join('\n')}\n\n💰 *ИТОГО: ${totalPrice}฿*`;
     
@@ -139,42 +146,46 @@ export default function IndexPage() {
       setOrderStatus("success");
       setTimeout(() => { clearCart(); setIsCartOpen(false); setOrderStatus("idle"); }, 2000);
     } catch (e) {
-      alert("Ошибка отправки.");
       setOrderStatus("idle");
     }
   };
 
   if (view === "landing") {
     return (
-      <div className="min-h-screen bg-[#050505] flex flex-col p-6">
-        <header className="flex items-center gap-4 mb-16 mt-4">
+      <div className="min-h-screen bg-[#050505] flex flex-col p-6 overflow-x-hidden">
+        <header className="flex items-center gap-4 mb-12 mt-4">
           <div className="w-16 h-16 relative flex-shrink-0">
              <img src="/images/logo-optimized.webp" alt="BND" className="w-full h-full object-contain" />
           </div>
           <div className="text-left">
-            <h1 className="text-2xl font-black uppercase italic tracking-tighter leading-none">Phuket BND</h1>
-            <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mt-1">Premium Selection</p>
+            <h1 className="text-2xl font-black uppercase italic tracking-tighter leading-none text-white">Phuket BND</h1>
+            <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mt-1">Premium Quality</p>
           </div>
         </header>
 
         <div className="flex-1 space-y-10">
           <section>
-            <div className="flex justify-between items-end mb-6">
-              <h2 className="text-[10px] font-black uppercase italic opacity-30 tracking-widest">Our Best Hits</h2>
-              <button onClick={() => setView("shop")} className="text-[9px] font-black uppercase text-emerald-400 flex items-center gap-1">Full Menu <ArrowRight size={10}/></button>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-[10px] font-black uppercase italic opacity-30 tracking-[0.2em]">Weekly Hits</h2>
+              <button onClick={() => setView("shop")} className="text-[11px] font-black uppercase text-emerald-400 flex items-center gap-1.5 py-2 px-3 bg-emerald-400/10 rounded-full border border-emerald-400/20">
+                Full Menu <ArrowRight size={12}/>
+              </button>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {products.filter(p => p.badge === "HIT").slice(0, 2).map((p) => (
+              {displayHits.map((p) => (
                 <ProductCard key={p.id} product={p} onOpen={setSelectedProduct} />
               ))}
             </div>
           </section>
 
-          <nav className="space-y-3">
-            {["Buds", "Hash", "Concentrates"].map(cat => (
-              <button key={cat} onClick={() => { setActiveCategory(cat); setView("shop"); }} 
-                className="w-full flex justify-between items-center p-6 bg-white/5 border border-white/10 rounded-[2rem] hover:bg-white/10 transition-all">
-                <span className="font-black uppercase italic tracking-widest">{cat}</span>
+          <nav className="space-y-3 pb-10">
+            {!loading && categories.map(cat => (
+              <button key={cat as string} onClick={() => { setActiveCategory(cat as string); setView("shop"); }} 
+                className="w-full flex justify-between items-center p-6 bg-white/5 border border-white/10 rounded-[2rem] hover:bg-white/10 transition-all active:scale-[0.98]">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-emerald-400 rounded-full flex items-center justify-center text-black"><Zap size={16} fill="currentColor"/></div>
+                  <span className="font-black uppercase italic tracking-widest text-white/90">{cat as string}</span>
+                </div>
                 <ArrowRight size={20} className="opacity-20" />
               </button>
             ))}
@@ -187,9 +198,9 @@ export default function IndexPage() {
   return (
     <div className="min-h-screen bg-[#050505] text-white pb-24">
       <header className="sticky top-0 z-[100] bg-[#050505]/90 backdrop-blur-xl p-4 border-b border-white/5 flex justify-between items-center">
-        <button onClick={() => setView("landing")} className="flex items-center gap-2">
-           <img src="/images/logo-optimized.webp" className="w-6 h-6 object-contain" />
-           <span className="text-[10px] font-black uppercase italic">Shop</span>
+        <button onClick={() => setView("landing")} className="flex items-center gap-2 py-2 px-3 bg-white/5 rounded-xl border border-white/10">
+           <img src="/images/logo-optimized.webp" className="w-5 h-5 object-contain" />
+           <span className="text-[9px] font-black uppercase italic opacity-60">Back to Menu</span>
         </button>
         <button onClick={() => setIsCartOpen(true)} className="relative p-3 bg-white/5 rounded-2xl border border-white/10">
           <ShoppingCart size={18} />
@@ -197,8 +208,8 @@ export default function IndexPage() {
         </button>
       </header>
 
-      <div className="p-4 flex gap-2 overflow-x-auto no-scrollbar border-b border-white/5">
-        {Array.from(new Set(products.map(p => p.category))).map(cat => (
+      <div className="p-4 flex gap-2 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#050505]">
+        {categories.map(cat => (
           <button key={cat as string} onClick={() => setActiveCategory(cat as string)} 
             className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase transition-all flex-shrink-0 ${activeCategory === cat ? "bg-white text-black" : "text-white/20"}`}>
             {cat as string}
@@ -212,8 +223,8 @@ export default function IndexPage() {
 
       <AnimatePresence>
         {isCartOpen && (
-          <div className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-3xl flex justify-end">
-            <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} className="h-full w-full max-w-md bg-[#0a0a0a] border-l border-white/10 p-8 flex flex-col">
+          <div className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-3xl flex justify-end" onClick={() => setIsCartOpen(false)}>
+            <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} className="h-full w-full max-w-md bg-[#0a0a0a] border-l border-white/10 p-8 flex flex-col" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-10"><h2 className="text-3xl font-black uppercase italic">Cart</h2><button onClick={() => setIsCartOpen(false)}><X size={20}/></button></div>
               {orderStatus === "success" ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -241,14 +252,32 @@ export default function IndexPage() {
                   </div>
                   <div className="pt-8 border-t border-white/10 space-y-6">
                     <input type="text" placeholder="@Your_TG_Nick" value={tgUser} onChange={(e) => setTgUser(e.target.value)} 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-xs font-bold" />
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-xs font-bold text-white focus:border-emerald-400 transition-colors outline-none" />
                     <div className="flex justify-between items-baseline"><span className="text-xs font-black uppercase opacity-20">Total</span><span className="text-4xl font-black">{totalPrice}฿</span></div>
-                    <button onClick={handleSendOrder} disabled={totalPrice === 0 || orderStatus === "loading"} className="w-full py-6 rounded-[1.5rem] bg-white text-black font-black uppercase text-[11px] tracking-widest">
+                    <button onClick={handleSendOrder} disabled={totalPrice === 0 || orderStatus === "loading"} className="w-full py-6 rounded-[1.5rem] bg-white text-black font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all">
                       {orderStatus === "loading" ? "Sending..." : "Checkout"}
                     </button>
                   </div>
                 </>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedProduct && (
+          <div className="fixed inset-0 z-[160] bg-black/95 backdrop-blur-xl flex items-end sm:items-center justify-center" onClick={() => setSelectedProduct(null)}>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="bg-[#0a0a0a] w-full max-w-lg rounded-t-[2rem] border-t border-white/10 overflow-hidden relative shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="aspect-square relative w-full border-b border-white/5">
+                <img src={getImageUrl(selectedProduct.image)} alt={selectedProduct.name} className="w-full h-full object-contain" />
+                <button onClick={() => setSelectedProduct(null)} className="absolute top-6 right-6 p-2 bg-black/40 rounded-full text-white/70 backdrop-blur-md"><X size={20} /></button>
+              </div>
+              <div className="p-8 space-y-5 text-left">
+                <h2 className="text-3xl font-black italic uppercase tracking-tighter">{selectedProduct.name}</h2>
+                <div className="text-4xl font-black tracking-tighter" style={{ color: GRADE_STYLES[String(selectedProduct.subcategory || "").toLowerCase().trim()]?.color || "#34D399" }}>{selectedProduct.price}฿</div>
+                <button onClick={() => { useCart.getState().addItem({ ...selectedProduct, price: selectedProduct.price, weight: "1", quantity: 1 }); setSelectedProduct(null); }} className="w-full py-4 rounded-2xl font-black uppercase text-[10px] bg-white text-black">В корзину</button>
+              </div>
             </motion.div>
           </div>
         )}
