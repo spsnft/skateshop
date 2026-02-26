@@ -91,13 +91,12 @@ function ProductCard({ product, onOpen, index }: { product: any, onOpen: (p: any
         <Info size={14} />
       </button>
 
-      {/* Оптимизированный контейнер картинки */}
       <div className="aspect-square relative overflow-hidden rounded-[1.2rem] bg-black/60 mb-3 cursor-pointer" onClick={() => onOpen(product)}>
         <img 
           src={getImageUrl(product.image)} 
           alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          loading={index < 4 ? "eager" : "lazy"} // Первые 4 грузим сразу
+          className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+          loading={index < 4 ? "eager" : "lazy"}
         />
       </div>
 
@@ -202,7 +201,7 @@ export default function IndexPage() {
                   : items.map(item => (
                     <div key={item.id + item.weight} className="flex gap-4 p-3 bg-white/5 rounded-2xl border border-white/5">
                       <div className="w-16 h-16 relative rounded-xl overflow-hidden bg-black shrink-0">
-                        <img src={getImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
+                        <img src={getImageUrl(item.image)} alt={item.name} className="w-full h-full object-contain" />
                       </div>
                       <div className="flex-1 text-left"><div className="text-[11px] font-bold uppercase italic truncate mb-2">{item.name} ({item.weight}g)</div><div className="flex items-center justify-between"><div className="flex items-center bg-black/40 rounded-lg"><button onClick={() => updateQuantity(item.id, item.weight, -1)} className="p-1.5"><Minus size={10}/></button><span className="text-[10px] font-black w-4 text-center">{item.quantity}</span><button onClick={() => updateQuantity(item.id, item.weight, 1)} className="p-1.5"><Plus size={10}/></button></div><div className="text-sm font-black">{item.price * item.quantity}฿</div></div></div>
                       <button onClick={() => removeItem(item.id, item.weight)} className="text-white/10 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
@@ -228,13 +227,12 @@ export default function IndexPage() {
         )}
       </AnimatePresence>
 
-      {/* DRAWER ДЛЯ ТОВАРА */}
       <AnimatePresence>
         {selectedProduct && (
           <div className="fixed inset-0 z-[130] bg-black/95 backdrop-blur-xl flex items-end sm:items-center justify-center" onClick={() => setSelectedProduct(null)}>
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="bg-[#0a0a0a] w-full max-w-lg rounded-t-[2rem] border-t border-white/10 overflow-hidden relative shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="aspect-square relative w-full border-b border-white/5">
-                <img src={getImageUrl(selectedProduct.image)} alt={selectedProduct.name} className="w-full h-full object-cover" />
+                <img src={getImageUrl(selectedProduct.image)} alt={selectedProduct.name} className="w-full h-full object-contain" />
                 <button onClick={() => setSelectedProduct(null)} className="absolute top-6 right-6 p-2 bg-black/40 rounded-full text-white/70 backdrop-blur-md"><X size={20} /></button>
               </div>
               <div className="p-8 space-y-5 text-left">
