@@ -17,9 +17,9 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { motion, AnimatePresence } from "framer-motion"
 
-// --- CONFIG ---
-const TG_TOKEN = "8496658347:AAE1OKbr1VlEdMOCPMtwoxJwaIWdbxfDZP8";
-const TG_CHAT_ID = "-1002347525330"; 
+// --- CONFIG (Берем из Environment Variables) ---
+const TG_TOKEN = process.env.NEXT_PUBLIC_TG_TOKEN;
+const TG_CHAT_ID = process.env.NEXT_PUBLIC_TG_CHAT_ID;
 
 const GRADE_STYLES: Record<string, any> = {
   "silver grade": { color: "#C1C1C1", bg: "bg-white/5", border: "border-white/10" },
@@ -123,6 +123,10 @@ export default function IndexPage() {
   }, []);
 
   const handleSendOrder = async () => {
+    if (!TG_TOKEN || !TG_CHAT_ID) {
+        alert("Ошибка конфигурации. Проверьте переменные в Vercel.");
+        return;
+    }
     setOrderStatus("loading");
     const message = `🚀 *НОВЫЙ ЗАКАЗ*\n\n👤 Клиент: ${tgUser || "Аноним"}\n\n🛒 *Товары:*\n${items.map(i => `• ${i.name} (${i.weight}g) x${i.quantity}`).join('\n')}\n\n💰 *ИТОГО: ${totalPrice}฿*`;
     
