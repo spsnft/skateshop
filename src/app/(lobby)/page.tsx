@@ -16,7 +16,7 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 
-// --- КОРЗИНА С СОХРАНЕНИЕМ (Local Storage) ---
+// --- КОРЗИНА ---
 interface CartStore {
   items: any[];
   addItem: (item: any) => void;
@@ -60,12 +60,21 @@ const getStyle = (val: string) => {
   return GRADE_STYLES[lowVal] || { color: "#34D399", border: "border-white/10", bg: "bg-white/5" };
 }
 
-// Вспомогательная функция для обработки ссылок на фото
 const getImageUrl = (imagePath: string) => {
   if (!imagePath) return '/product-placeholder.webp';
-  if (imagePath.startsWith('http')) return imagePath; // Если в таблице ссылка (Cloud)
-  return `/images/${imagePath.split('/').pop()}`; // Если в таблице просто имя файла (GitHub)
+  if (imagePath.startsWith('http')) return imagePath;
+  return `/images/${imagePath.split('/').pop()}`;
 }
+
+// ЗАГЛУШКА ПРИ ЗАГРУЗКЕ
+const ProductSkeleton = () => (
+  <div className="flex flex-col rounded-[1.5rem] border border-white/5 p-2.5 bg-white/5 animate-pulse">
+    <div className="aspect-square w-full rounded-[1.2rem] bg-white/10 mb-3" />
+    <div className="h-4 w-3/4 bg-white/10 rounded mb-2" />
+    <div className="h-6 w-1/2 bg-white/10 rounded mb-3" />
+    <div className="h-8 w-full bg-white/10 rounded-xl" />
+  </div>
+);
 
 function ProductCard({ product, onOpen, index }: { product: any, onOpen: (p: any) => void, index: number }) {
   const [weight, setWeight] = React.useState("1");
@@ -82,9 +91,9 @@ function ProductCard({ product, onOpen, index }: { product: any, onOpen: (p: any
 
   return (
     <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.4) }}
       className={`relative flex flex-col rounded-[1.5rem] border p-2.5 backdrop-blur-xl ${style.bg} ${style.border}`}
     >
       <button onClick={() => onOpen(product)} className="absolute top-4 right-4 z-20 p-1.5 bg-black/40 rounded-full text-white/50 hover:text-white transition-colors">
@@ -136,7 +145,11 @@ export default function IndexPage() {
   const navBackground = useTransform(scrollY, [0, 40], ["rgba(5, 5, 5, 0)", "rgba(5, 5, 5, 0.95)"])
 
   React.useEffect(() => {
-    getProducts().then(data => { setProducts(data); setLoading(false); })
+    setLoading(true);
+    getProducts().then(data => { 
+      setProducts(data); 
+      setLoading(false); 
+    })
   }, [])
 
   const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean)))
@@ -165,7 +178,8 @@ export default function IndexPage() {
               </button>
             </motion.header>
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-              {!loading && categories.map(cat => (
+              {loading ? [1,2,3].map(i => <div key={i} className="h-8 w-24 bg-white/5 rounded-xl animate-pulse" />) :
+                categories.map(cat => (
                 <button key={cat as string} onClick={() => { setActiveCategory(cat as string); setActiveSub("All"); }} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all flex-shrink-0 ${activeCategory === cat ? "bg-white text-black border-white shadow-lg" : "border-white/5 text-white/20"}`}>{cat as string}</button>
               ))}
             </div>
@@ -185,11 +199,12 @@ export default function IndexPage() {
           </div>
         )}
         <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          {loading ? [1,2,3,4].map(i => <div key={i} className="aspect-[3/4.5] rounded-[1.5rem] bg-white/5 animate-pulse" />) 
+          {loading ? [1,2,3,4,5,6].map(i => <ProductSkeleton key={i} />) 
                    : filtered.map((p, idx) => <ProductCard key={p.id} product={p} index={idx} onOpen={setSelectedProduct} />)}
         </section>
       </div>
-
+      
+      {/* КОРЗИНА И ДЕТАЛИ (Оставляем без изменений) */}
       <AnimatePresence>
         {isCartOpen && (
           <div className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-2xl flex justify-end">
