@@ -87,7 +87,6 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
   const subcat = String(product.subcategory || "").toLowerCase().trim();
   const style = GRADE_STYLES[subcat] || { color: "#34D399", bg: "bg-white/5", border: "border-white/10" };
   
-  // Если аксессуары — цена фиксированная, если бадс — расчетная
   const isBuds = product.category === "Buds";
   const currentPrice = isBuds ? getInterpolatedPrice(weight, subcat) : (product.price || 0);
 
@@ -168,23 +167,23 @@ export default function IndexPage() {
 
   if (view === "landing") {
     return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-8">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-sm flex flex-col items-center">
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-full max-w-sm flex flex-col items-center">
           <img src="/images/logo-optimized.webp" alt="BND" className="w-52 h-52 object-contain mb-12 drop-shadow-[0_0_50px_rgba(52,211,153,0.1)]" />
           <div className="grid grid-cols-1 gap-5 w-full">
             {["Buds", "Accessories"].map((cat) => (
               <button key={cat} onClick={() => { setActiveCategory(cat); setActiveSubcat("All"); setView("shop"); window.scrollTo(0,0); }} className="group flex justify-between items-center bg-white/5 border border-white/10 p-10 rounded-[3rem] hover:bg-white hover:text-black transition-all active:scale-95">
-                <div className="flex items-center gap-6">
-                  <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-black/10">
+                <div className="flex items-center gap-6 text-white group-hover:text-black">
+                  <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center">
                     {cat === "Buds" ? <Leaf size={24} /> : <Zap size={24} />}
                   </div>
                   <span className="text-2xl font-black uppercase italic tracking-widest">{cat}</span>
                 </div>
-                <ArrowRight size={28} className="opacity-20 group-hover:opacity-100 transition-opacity" />
+                <ArrowRight size={28} className="opacity-20 group-hover:opacity-100" />
               </button>
             ))}
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
