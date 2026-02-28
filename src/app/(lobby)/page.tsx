@@ -1,5 +1,5 @@
 "use client"
-// BND-UPDATE-V7.1: Fixed "All Grades", Green Glass Cart #193D2E
+// BND-UPDATE-V8.1: Background #193D2E, Double Filter (Grade + Type), Local Images
 import * as React from "react"
 import { getProducts } from "@/lib/fetchers/product"
 import { 
@@ -20,10 +20,10 @@ const PRICE_GRIDS: Record<string, Record<number, number>> = {
 };
 
 const GRADE_STYLES: Record<string, any> = {
-  "silver": { color: "#C1C1C1", bg: "bg-white/5", border: "border-white/10", glow: "shadow-[0_0_20px_rgba(193,193,193,0.1)]" },
-  "golden": { color: "#FEC107", bg: "bg-[#FEC107]/5", border: "border-[#FEC107]/20", glow: "shadow-[0_0_20px_rgba(254,193,7,0.1)]" },
-  "premium": { color: "#34D399", bg: "bg-[#34D399]/10", border: "border-[#34D399]/20", glow: "shadow-[0_0_20px_rgba(52,211,153,0.1)]" },
-  "selected premium": { color: "#A855F7", bg: "bg-[#A855F7]/10", border: "border-[#A855F7]/20", glow: "shadow-[0_0_20px_rgba(168,85,247,0.1)]" },
+  "silver": { color: "#C1C1C1", bg: "bg-white/5", border: "border-white/10" },
+  "golden": { color: "#FEC107", bg: "bg-[#FEC107]/5", border: "border-[#FEC107]/20" },
+  "premium": { color: "#34D399", bg: "bg-[#34D399]/10", border: "border-[#34D399]/20" },
+  "selected premium": { color: "#A855F7", bg: "bg-[#A855F7]/10", border: "border-[#A855F7]/20" },
 };
 
 const getInterpolatedPrice = (weight: number, subcategory: string) => {
@@ -40,7 +40,8 @@ const getInterpolatedPrice = (weight: number, subcategory: string) => {
 
 const getImageUrl = (path: string) => {
   if (!path) return '/product-placeholder.webp';
-  return path.startsWith('http') ? path : `/images/${path.split('/').pop()}`;
+  // Если в таблице ссылка (http), используем её, если просто имя файла — берем из /images/
+  return path.startsWith('http') ? path : `/images/${path}`;
 }
 
 // --- STORE ---
@@ -67,14 +68,13 @@ const useCart = create<CartStore>()(persist((set) => ({
   clearCart: () => set({ items: [] })
 }), { name: "bnd-cart-v6" }));
 
-// --- COMPONENT: BADGE ---
 const ProductBadge = ({ type }: { type: any }) => {
   if (!type) return null;
   const safeType = String(type).toUpperCase().trim();
   const styles: Record<string, string> = {
-    "NEW": "bg-cyan-400/20 text-cyan-400 border-cyan-400/30",
-    "HIT": "bg-amber-400/20 text-amber-400 border-amber-400/30",
-    "SALE": "bg-red-500/20 text-red-400 border-red-500/30"
+    "NEW": "bg-cyan-400/30 text-cyan-400 border-cyan-400/40",
+    "HIT": "bg-amber-400/30 text-amber-400 border-amber-400/40",
+    "SALE": "bg-red-500/30 text-red-400 border-red-500/40"
   };
   if (!styles[safeType]) return null;
   return (
@@ -84,35 +84,33 @@ const ProductBadge = ({ type }: { type: any }) => {
   );
 };
 
-// --- COMPONENT: CARD ---
 function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => void }) {
   const [weight, setWeight] = React.useState(1);
   const [isAdded, setIsAdded] = React.useState(false);
   const addItem = useCart(s => s.addItem);
-  
   const subcat = String(product.subcategory || "").toLowerCase().trim();
   const isBuds = String(product.category || "").toLowerCase().trim() === "buds";
-  
-  const style = isBuds ? (GRADE_STYLES[subcat] || { color: "#34D399", bg: "bg-white/5", border: "border-white/10", glow: "" }) 
-                       : { color: "#FFF", bg: "bg-white/5", border: "border-white/10", glow: "" };
-  
+  const style = isBuds ? (GRADE_STYLES[subcat] || { color: "#34D399", bg: "bg-white/5", border: "border-white/10" }) 
+                       : { color: "#FFF", bg: "bg-white/5", border: "border-white/10" };
   const currentPrice = isBuds ? getInterpolatedPrice(weight, subcat) : (Number(product.price) || 0);
 
   return (
-    <div className={`relative flex flex-col rounded-[2.5rem] border p-5 backdrop-blur-2xl transition-all duration-300 ${style.bg} ${style.border} ${style.glow}`}>
-      <button onClick={() => onOpen(product)} className="absolute top-6 right-6 z-20 p-2 bg-black/20 backdrop-blur-md rounded-full text-white/40 border border-white/5 hover:text-white transition-colors"><Info size={16} /></button>
-      
+    <div className={`relative flex flex-col rounded-[2.5rem] border p-5 backdrop-blur-2xl transition-all duration-300 ${style.bg} ${style.border}`}>
+      <button onClick={() => onOpen(product)} className="absolute top-6 right-6 z-20 p-2 bg-black/20 backdrop-blur-md rounded-full text-white/40 border border-white/5 transition-colors"><Info size={16} /></button>
       <div className="aspect-square relative overflow-hidden rounded-[2rem] bg-black/40 mb-6 cursor-pointer border border-white/5 shadow-inner" onClick={() => onOpen(product)}>
         <ProductBadge type={product.badge} />
         <img src={getImageUrl(product.image)} alt="" className="w-full h-full object-contain" onError={(e) => e.currentTarget.src = "/product-placeholder.webp"} />
       </div>
-
       <div className="flex-1 space-y-6 text-left">
         <div>
-          <h3 className="font-bold text-white/90 text-[14px] uppercase italic truncate mb-1">{product.name}</h3>
+          <div className="flex justify-between items-start mb-1">
+            <h3 className="font-bold text-white/90 text-[14px] uppercase italic truncate">{product.name}</h3>
+            {product.type && isBuds && (
+              <span className="text-[8px] font-black uppercase text-white/40 border border-white/10 px-2 py-0.5 rounded-full">{product.type}</span>
+            )}
+          </div>
           <div className="text-3xl font-black tracking-tighter" style={{ color: style.color }}>{currentPrice}฿</div>
         </div>
-
         {isBuds && (
           <div className="space-y-4">
             <div className="flex justify-between items-end px-1">
@@ -128,7 +126,6 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
           </div>
         )}
       </div>
-
       <button onClick={() => { addItem({ ...product, price: currentPrice, weight: isBuds ? weight : '1pc' }); setIsAdded(true); setTimeout(() => setIsAdded(false), 1000); }}
         className="w-full mt-8 py-5 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-95 transition-all border border-white/10"
         style={{ backgroundColor: isAdded ? '#34D399' : style.color, color: '#000' }}>
@@ -143,8 +140,8 @@ export default function IndexPage() {
   const [view, setView] = React.useState<"landing" | "shop">("landing");
   const [activeCategory, setActiveCategory] = React.useState("Buds");
   const [activeSubcat, setActiveSubcat] = React.useState("All Grades");
+  const [activeType, setActiveType] = React.useState("All Types");
   const [isCartOpen, setIsCartOpen] = React.useState(false);
-  const [selectedProduct, setSelectedProduct] = React.useState<any | null>(null);
   const [orderStatus, setOrderStatus] = React.useState<"idle" | "loading" | "success">("idle");
   const [tgUser, setTgUser] = React.useState("");
   const [phone, setPhone] = React.useState("");
@@ -159,17 +156,17 @@ export default function IndexPage() {
   const subcategories = React.useMemo(() => {
     const filtered = products.filter(p => String(p.category || "").toLowerCase().trim() === activeCategory.toLowerCase());
     const unique = Array.from(new Set(filtered.map(p => p.subcategory).filter(Boolean)));
-    // Жестко задаем All Grades
     return ["All Grades", ...unique];
   }, [products, activeCategory]);
 
   const visibleProducts = React.useMemo(() => {
     return products.filter(p => {
-      const matchCat = String(p.category || "").toLowerCase().trim() === activeCategory.toLowerCase();
+      const matchCat = String(p.category).toLowerCase().trim() === activeCategory.toLowerCase();
       const matchSub = activeSubcat === "All Grades" || p.subcategory === activeSubcat;
-      return matchCat && matchSub;
+      const matchType = activeType === "All Types" || String(p.type).toLowerCase().trim() === activeType.toLowerCase();
+      return matchCat && matchSub && matchType;
     });
-  }, [products, activeCategory, activeSubcat]);
+  }, [products, activeCategory, activeSubcat, activeType]);
 
   const handleSendOrder = async () => {
     if (!TG_TOKEN || !TG_CHAT_ID) return;
@@ -191,7 +188,7 @@ export default function IndexPage() {
         <img src="/images/logo-optimized.webp" alt="BND" className="w-52 h-52 object-contain mb-12 drop-shadow-[0_0_50px_rgba(52,211,153,0.1)]" />
         <div className="grid grid-cols-1 gap-5 w-full max-w-sm">
           {["Buds", "Accessories"].map((cat) => (
-            <button key={cat} onClick={() => { setActiveCategory(cat); setActiveSubcat("All Grades"); setView("shop"); window.scrollTo(0,0); }} className="group flex justify-between items-center bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[3rem] hover:bg-white hover:text-black transition-all active:scale-95 shadow-2xl">
+            <button key={cat} onClick={() => { setActiveCategory(cat); setActiveSubcat("All Grades"); setActiveType("All Types"); setView("shop"); window.scrollTo(0,0); }} className="group flex justify-between items-center bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[3rem] hover:bg-white hover:text-black transition-all active:scale-95 shadow-2xl">
               <div className="flex items-center gap-6">
                 <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-black/10 transition-colors">
                   {cat === "Buds" ? <Leaf size={24} /> : <Zap size={24} />}
@@ -213,21 +210,27 @@ export default function IndexPage() {
         <button onClick={() => setIsCartOpen(true)} className="relative p-5 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl transition-all active:scale-95"><ShoppingCart size={22} />{items.length > 0 && <span className="absolute -top-1 -right-1 w-7 h-7 bg-emerald-400 text-black text-[11px] font-black rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">{items.length}</span>}</button>
       </header>
 
+      {/* ФИЛЬТР ГРЕЙДОВ */}
       <div className="p-5 flex gap-3 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#193D2E]/50 backdrop-blur-sm">
         {subcategories.map(sub => (
-          <button 
-            key={sub} 
-            onClick={() => setActiveSubcat(sub)} 
-            className={`px-7 py-3 rounded-2xl text-[10px] font-black uppercase flex-shrink-0 transition-all ${activeSubcat === sub ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]" : "text-white/20 hover:text-white/40"}`}
-          >
-            {sub}
-          </button>
+          <button key={sub} onClick={() => { setActiveSubcat(sub); window.scrollTo(0,0); }} className={`px-7 py-3 rounded-2xl text-[10px] font-black uppercase flex-shrink-0 transition-all ${activeSubcat === sub ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]" : "text-white/20 hover:text-white/40"}`}>{sub}</button>
         ))}
       </div>
 
+      {/* ФИЛЬТР ТИПОВ (ИНДИКА/САТИВА) - ТОЛЬКО ДЛЯ BUDS */}
+      {activeCategory === "Buds" && (
+        <div className="px-5 py-4 flex gap-2 overflow-x-auto no-scrollbar bg-black/10 border-b border-white/5">
+          {["All Types", "Indica", "Sativa", "Hybrid"].map(type => (
+            <button key={type} onClick={() => { setActiveType(type); window.scrollTo(0,0); }} className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase transition-all border ${activeType === type ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "border-white/5 text-white/20 bg-white/5"}`}>
+              {type}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="container mx-auto px-6 mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
         {visibleProducts.map(p => (
-          <ProductCard key={`${p.id}-${p.subcategory}`} product={p} onOpen={setSelectedProduct} />
+          <ProductCard key={`${p.id}-${p.subcategory}`} product={p} onOpen={() => {}} />
         ))}
       </div>
 
@@ -259,12 +262,10 @@ export default function IndexPage() {
 
                 <div className="pt-10 border-t border-white/10 space-y-5">
                   <p className="text-[10px] font-black uppercase text-white/20 tracking-widest text-center italic">Fill at least one contact field</p>
-                  
                   <div className="space-y-3">
                     <input type="text" placeholder="@Telegram" value={tgUser} onChange={(e) => setTgUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400 focus:bg-white/10 transition-all placeholder:text-white/10 backdrop-blur-md" />
                     <input type="text" placeholder="Contact Phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400 focus:bg-white/10 transition-all placeholder:text-white/10 backdrop-blur-md" />
                   </div>
-                  
                   <div className="flex justify-between items-baseline pt-6 px-4"><span className="text-[12px] font-black uppercase opacity-20 italic">Total Payment</span><span className="text-6xl font-black tracking-tighter text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">{totalPrice}฿</span></div>
                   <button onClick={handleSendOrder} disabled={totalPrice === 0 || (!tgUser && !phone) || orderStatus === "loading"} className="w-full py-8 rounded-[2.5rem] bg-white text-black font-black uppercase text-[13px] tracking-widest shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 disabled:opacity-20 transition-all border border-white/20">Send Order</button>
                 </div>
