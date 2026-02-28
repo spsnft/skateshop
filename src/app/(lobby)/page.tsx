@@ -62,17 +62,18 @@ const useCart = create<CartStore>()(persist((set) => ({
   clearCart: () => set({ items: [] })
 }), { name: "bnd-cart-v3" }));
 
-// --- COMPONENT: BADGE ---
-const ProductBadge = ({ type }: { type: string }) => {
-  const safeType = String(type || "").toUpperCase().trim();
+// --- COMPONENT: BADGE (Исправленный) ---
+const ProductBadge = ({ type }: { type: any }) => {
+  if (!type) return null;
+  const safeType = String(type).toUpperCase().trim();
   const styles: Record<string, string> = {
-    "NEW": "bg-cyan-500",
-    "HIT": "bg-amber-500",
-    "SALE": "bg-red-600"
+    "NEW": "bg-cyan-400 text-black",
+    "HIT": "bg-amber-400 text-black",
+    "SALE": "bg-red-500 text-white"
   };
   if (!styles[safeType]) return null;
   return (
-    <div className={`absolute top-0 left-0 z-30 px-3 py-1 rounded-br-2xl rounded-tl-xl text-[8px] font-black uppercase italic tracking-tighter text-black ${styles[safeType]}`}>
+    <div className={`absolute top-2 left-2 z-[40] px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-tight shadow-lg ${styles[safeType]}`}>
       {safeType}
     </div>
   );
@@ -89,7 +90,9 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
 
   return (
     <div className={`relative flex flex-col rounded-[2.2rem] border p-4 backdrop-blur-xl ${style.bg} ${style.border}`}>
+      {/* ПРОВЕРКА БЕЙДЖА */}
       <ProductBadge type={product.badge} />
+      
       <button onClick={() => onOpen(product)} className="absolute top-5 right-5 z-20 p-2 bg-black/40 rounded-full text-white/40"><Info size={14} /></button>
       <div className="aspect-square relative overflow-hidden rounded-[1.8rem] bg-black/60 mb-5 cursor-pointer" onClick={() => onOpen(product)}>
         <img src={getImageUrl(product.image)} alt="" className="w-full h-full object-contain" onError={(e) => e.currentTarget.src = "/product-placeholder.webp"} />
@@ -181,20 +184,18 @@ export default function IndexPage() {
         <button onClick={() => setView("landing")} className="flex items-center gap-3 py-2 px-4 bg-white/5 rounded-2xl border border-white/10 text-[10px] font-black uppercase italic"><img src="/images/logo-optimized.webp" className="w-6 h-6 object-contain" />Back</button>
         <button onClick={() => setIsCartOpen(true)} className="relative p-4 bg-white/5 rounded-2xl border border-white/10"><ShoppingCart size={20} />{items.length > 0 && <span className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-400 text-black text-[10px] font-black rounded-full flex items-center justify-center">{items.length}</span>}</button>
       </header>
-      
       <div className="p-4 flex gap-2 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#050505]">
         <button onClick={() => setActiveSubcat("All")} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase flex-shrink-0 ${activeSubcat === "All" ? "bg-white text-black" : "text-white/20"}`}>All</button>
         {subcategories.map(sub => (
           <button key={sub} onClick={() => setActiveSubcat(sub)} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase flex-shrink-0 ${activeSubcat === sub ? "bg-white text-black" : "text-white/20"}`}>{sub}</button>
         ))}
       </div>
-
       <div className="container mx-auto px-5 mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {visibleProducts.map(p => (
           <ProductCard key={`${p.id}-${p.subcategory}`} product={p} onOpen={setSelectedProduct} />
         ))}
       </div>
-
+      {/* КОРЗИНА */}
       {isCartOpen && (
         <div className="fixed inset-0 z-[150] bg-black/95 flex justify-end">
           <div className="h-full w-full max-w-md bg-[#0a0a0a] border-l border-white/10 p-10 flex flex-col">
