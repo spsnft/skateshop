@@ -19,10 +19,10 @@ const PRICE_GRIDS: Record<string, Record<number, number>> = {
 };
 
 const GRADE_STYLES: Record<string, any> = {
-  "silver grade": { color: "#C1C1C1", bg: "bg-white/5", border: "border-white/10" },
-  "golden grade": { color: "#FEC107", bg: "bg-[#FEC107]/5", border: "border-[#FEC107]/20" },
-  "premium grade": { color: "#34D399", bg: "bg-[#193D2E]/20", border: "border-[#34D399]/30" },
-  "selected premium": { color: "#A855F7", bg: "bg-[#4B2E63]/20", border: "border-[#A855F7]/30" },
+  "silver grade": { color: "#C1C1C1", bg: "bg-white/5", border: "border-white/10", glow: "shadow-[0_0_20px_rgba(193,193,193,0.1)]" },
+  "golden grade": { color: "#FEC107", bg: "bg-[#FEC107]/5", border: "border-[#FEC107]/20", glow: "shadow-[0_0_20px_rgba(254,193,7,0.1)]" },
+  "premium grade": { color: "#34D399", bg: "bg-[#193D2E]/20", border: "border-[#34D399]/20", glow: "shadow-[0_0_20px_rgba(52,211,153,0.1)]" },
+  "selected premium": { color: "#A855F7", bg: "bg-[#4B2E63]/20", border: "border-[#A855F7]/20", glow: "shadow-[0_0_20px_rgba(168,85,247,0.1)]" },
 };
 
 const getInterpolatedPrice = (weight: number, subcategory: string) => {
@@ -62,18 +62,18 @@ const useCart = create<CartStore>()(persist((set) => ({
   clearCart: () => set({ items: [] })
 }), { name: "bnd-cart-v5" }));
 
-// --- COMPONENT: BADGE ---
+// --- COMPONENT: BADGE (Glassmorphism Style) ---
 const ProductBadge = ({ type }: { type: any }) => {
   if (!type) return null;
   const safeType = String(type).toUpperCase().trim();
   const styles: Record<string, string> = {
-    "NEW": "bg-cyan-400 text-black",
-    "HIT": "bg-amber-400 text-black",
-    "SALE": "bg-red-500 text-white"
+    "NEW": "bg-cyan-400/20 text-cyan-400 border-cyan-400/30",
+    "HIT": "bg-amber-400/20 text-amber-400 border-amber-400/30",
+    "SALE": "bg-red-500/20 text-red-400 border-red-500/30"
   };
   if (!styles[safeType]) return null;
   return (
-    <div className={`absolute top-4 left-4 z-[40] px-3 py-1 rounded-lg text-[9px] font-black uppercase shadow-2xl ${styles[safeType]}`}>
+    <div className={`absolute top-0 left-0 z-10 px-4 py-1.5 rounded-tl-[1.8rem] rounded-br-[1.2rem] text-[8px] font-black uppercase tracking-widest backdrop-blur-xl border-b border-r shadow-2xl ${styles[safeType]}`}>
       {safeType}
     </div>
   );
@@ -88,35 +88,36 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
   const subcat = String(product.subcategory || "").toLowerCase().trim();
   const isBuds = String(product.category || "").toLowerCase().trim() === "buds";
   
-  const style = isBuds ? (GRADE_STYLES[subcat] || { color: "#34D399", bg: "bg-white/5", border: "border-white/10" }) 
-                       : { color: "#FFF", bg: "bg-white/5", border: "border-white/10" };
+  const style = isBuds ? (GRADE_STYLES[subcat] || { color: "#34D399", bg: "bg-white/5", border: "border-white/10", glow: "" }) 
+                       : { color: "#FFF", bg: "bg-white/5", border: "border-white/10", glow: "" };
   
   const currentPrice = isBuds ? getInterpolatedPrice(weight, subcat) : (Number(product.price) || 0);
 
   return (
-    <div className={`relative flex flex-col rounded-[2.5rem] border p-5 backdrop-blur-xl ${style.bg} ${style.border}`}>
-      <ProductBadge type={product.badge} />
-      <button onClick={() => onOpen(product)} className="absolute top-6 right-6 z-20 p-2 bg-black/40 rounded-full text-white/40"><Info size={16} /></button>
-      <div className="aspect-square relative overflow-hidden rounded-[2rem] bg-black/60 mb-6 cursor-pointer" onClick={() => onOpen(product)}>
+    <div className={`relative flex flex-col rounded-[2.5rem] border p-5 backdrop-blur-2xl transition-all duration-300 ${style.bg} ${style.border} ${style.glow}`}>
+      <button onClick={() => onOpen(product)} className="absolute top-6 right-6 z-20 p-2 bg-black/20 backdrop-blur-md rounded-full text-white/40 border border-white/5 hover:text-white transition-colors"><Info size={16} /></button>
+      
+      <div className="aspect-square relative overflow-hidden rounded-[2rem] bg-black/40 mb-6 cursor-pointer border border-white/5" onClick={() => onOpen(product)}>
+        <ProductBadge type={product.badge} />
         <img src={getImageUrl(product.image)} alt="" className="w-full h-full object-contain" onError={(e) => e.currentTarget.src = "/product-placeholder.webp"} />
       </div>
 
       <div className="flex-1 space-y-6 text-left">
         <div>
-          <h3 className="font-bold text-white text-[14px] uppercase italic truncate mb-1">{product.name}</h3>
+          <h3 className="font-bold text-white/90 text-[14px] uppercase italic truncate mb-1">{product.name}</h3>
           <div className="text-3xl font-black tracking-tighter" style={{ color: style.color }}>{currentPrice}฿</div>
         </div>
 
         {isBuds && (
           <div className="space-y-4">
-            <div className="flex justify-between items-end">
+            <div className="flex justify-between items-end px-1">
               <span className="text-[10px] font-black uppercase text-white/20 italic tracking-widest">Weight</span>
-              <span className="text-2xl font-black text-white italic leading-none">{weight}g</span>
+              <span className="text-2xl font-black text-white/90 italic leading-none">{weight}g</span>
             </div>
-            <input type="range" min="0.5" max="20" step="0.5" value={weight} onChange={(e) => setWeight(parseFloat(e.target.value))} className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white" />
+            <input type="range" min="0.5" max="20" step="0.5" value={weight} onChange={(e) => setWeight(parseFloat(e.target.value))} className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white" />
             <div className="grid grid-cols-4 gap-2">
               {[1, 5, 10, 20].map(v => (
-                <button key={v} onClick={() => setWeight(v)} className={`py-2.5 text-[10px] font-black rounded-xl border transition-all ${weight === v ? "bg-white text-black border-white" : "border-white/5 text-white/30 bg-black/20"}`}>{v}g</button>
+                <button key={v} onClick={() => setWeight(v)} className={`py-2.5 text-[10px] font-black rounded-xl border transition-all ${weight === v ? "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "border-white/5 text-white/30 bg-white/5 backdrop-blur-sm"}`}>{v}g</button>
               ))}
             </div>
           </div>
@@ -124,7 +125,7 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
       </div>
 
       <button onClick={() => { addItem({ ...product, price: currentPrice, weight: isBuds ? weight : '1pc', quantity: 1 }); setIsAdded(true); setTimeout(() => setIsAdded(false), 1000); }}
-        className="w-full mt-8 py-5 rounded-[1.5rem] font-black uppercase text-[11px] shadow-lg active:scale-95 transition-all"
+        className="w-full mt-8 py-5 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-95 transition-all border border-white/10"
         style={{ backgroundColor: isAdded ? '#34D399' : style.color, color: '#000' }}>
         {isAdded ? "Added" : "Add to Cart"}
       </button>
@@ -184,9 +185,9 @@ export default function IndexPage() {
         <img src="/images/logo-optimized.webp" alt="BND" className="w-52 h-52 object-contain mb-12 drop-shadow-[0_0_50px_rgba(52,211,153,0.1)]" />
         <div className="grid grid-cols-1 gap-5 w-full max-w-sm">
           {["Buds", "Accessories"].map((cat) => (
-            <button key={cat} onClick={() => { setActiveCategory(cat); setActiveSubcat("All"); setView("shop"); window.scrollTo(0,0); }} className="group flex justify-between items-center bg-white/5 border border-white/10 p-10 rounded-[3rem] hover:bg-white hover:text-black transition-all">
+            <button key={cat} onClick={() => { setActiveCategory(cat); setActiveSubcat("All"); setView("shop"); window.scrollTo(0,0); }} className="group flex justify-between items-center bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[3rem] hover:bg-white hover:text-black transition-all active:scale-95 shadow-2xl">
               <div className="flex items-center gap-6">
-                <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-black/10">
+                <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-black/10 transition-colors">
                   {cat === "Buds" ? <Leaf size={24} /> : <Zap size={24} />}
                 </div>
                 <span className="text-2xl font-black uppercase italic tracking-widest">{cat}</span>
@@ -201,41 +202,43 @@ export default function IndexPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white pb-24 text-center">
-      <header className="sticky top-0 z-[100] bg-[#050505]/95 backdrop-blur-md p-6 border-b border-white/5 flex justify-between items-center">
-        <button onClick={() => setView("landing")} className="flex items-center gap-3 py-2.5 px-5 bg-white/5 rounded-2xl border border-white/10 text-[11px] font-black uppercase italic"><img src="/images/logo-optimized.webp" className="w-7 h-7 object-contain" />Back</button>
-        <button onClick={() => setIsCartOpen(true)} className="relative p-5 bg-white/5 rounded-2xl border border-white/10 shadow-xl"><ShoppingCart size={22} />{items.length > 0 && <span className="absolute -top-1 -right-1 w-7 h-7 bg-emerald-400 text-black text-[11px] font-black rounded-full flex items-center justify-center">{items.length}</span>}</button>
+      <header className="sticky top-0 z-[100] bg-[#050505]/80 backdrop-blur-xl p-6 border-b border-white/5 flex justify-between items-center">
+        <button onClick={() => setView("landing")} className="flex items-center gap-3 py-2.5 px-5 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 text-[11px] font-black uppercase italic transition-all active:scale-95"><img src="/images/logo-optimized.webp" className="w-7 h-7 object-contain" />Back</button>
+        <button onClick={() => setIsCartOpen(true)} className="relative p-5 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl transition-all active:scale-95"><ShoppingCart size={22} />{items.length > 0 && <span className="absolute -top-1 -right-1 w-7 h-7 bg-emerald-400 text-black text-[11px] font-black rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">{items.length}</span>}</button>
       </header>
 
-      <div className="p-5 flex gap-3 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#050505]">
+      <div className="p-5 flex gap-3 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#050505]/50 backdrop-blur-sm">
         {subcategories.map(sub => (
-          <button key={sub} onClick={() => setActiveSubcat(sub)} className={`px-7 py-3 rounded-2xl text-[10px] font-black uppercase flex-shrink-0 ${activeSubcat === sub ? "bg-white text-black" : "text-white/20"}`}>{sub}</button>
+          <button key={sub} onClick={() => setActiveSubcat(sub)} className={`px-7 py-3 rounded-2xl text-[10px] font-black uppercase flex-shrink-0 transition-all ${activeSubcat === sub ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]" : "text-white/20 hover:text-white/40"}`}>{sub}</button>
         ))}
       </div>
 
-      <div className="container mx-auto px-6 mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
+      <div className="container mx-auto px-6 mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
         {visibleProducts.map(p => (
           <ProductCard key={`${p.id}-${p.subcategory}`} product={p} onOpen={setSelectedProduct} />
         ))}
       </div>
 
       {isCartOpen && (
-        <div className="fixed inset-0 z-[150] bg-black/95 flex justify-end" onClick={() => setIsCartOpen(false)}>
-          <div className="h-full w-full max-w-md bg-[#0a0a0a] border-l border-white/10 p-12 flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-10"><h2 className="text-4xl font-black uppercase italic text-white">Cart</h2><button onClick={() => setIsCartOpen(false)}><X size={28}/></button></div>
+        <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-md flex justify-end" onClick={() => setIsCartOpen(false)}>
+          <div className="h-full w-full max-w-md bg-[#0a0a0a]/90 backdrop-blur-2xl border-l border-white/10 p-12 flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-10"><h2 className="text-4xl font-black uppercase italic text-white tracking-tighter">My Cart</h2><button onClick={() => setIsCartOpen(false)} className="p-2 hover:bg-white/5 rounded-full transition-colors"><X size={28}/></button></div>
             
             {orderStatus === "success" ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center"><CheckCircle2 size={100} className="text-emerald-400 mb-8" /><h3 className="text-3xl font-black uppercase italic">Order Sent!</h3></div>
+              <div className="flex-1 flex flex-col items-center justify-center text-center"><CheckCircle2 size={100} className="text-emerald-400 mb-8 drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]" /><h3 className="text-3xl font-black uppercase italic">Order Sent!</h3></div>
             ) : (
               <>
                 <div className="flex-1 overflow-y-auto space-y-8 no-scrollbar">
                   {items.map(item => (
-                    <div key={`${item.id}-${item.weight}`} className="flex gap-6 p-6 bg-white/5 rounded-[2.5rem] items-center border border-white/5 group">
-                      <img src={getImageUrl(item.image)} className="w-20 h-20 object-contain rounded-2xl" />
-                      <div className="flex-1">
-                        <div className="text-[13px] font-black uppercase italic mb-1 text-white">{item.name}</div>
+                    <div key={`${item.id}-${item.weight}`} className="flex gap-6 p-6 bg-white/5 rounded-[2.5rem] items-center border border-white/5 group backdrop-blur-md">
+                      <div className="w-20 h-20 bg-black/40 rounded-2xl border border-white/5 p-2 flex items-center justify-center">
+                         <img src={getImageUrl(item.image)} className="w-full h-full object-contain" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="text-[13px] font-black uppercase italic mb-1 text-white/90">{item.name}</div>
                         <div className="text-[11px] font-bold text-white/20 tracking-widest">{item.weight} • {item.price}฿</div>
                       </div>
-                      <button onClick={() => removeItem(item.id, item.weight)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all">
+                      <button onClick={() => removeItem(item.id, item.weight)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-90">
                         <Trash2 size={20} />
                       </button>
                     </div>
@@ -243,10 +246,12 @@ export default function IndexPage() {
                 </div>
 
                 <div className="pt-10 border-t border-white/10 space-y-5">
-                  <input type="text" placeholder="@Telegram_Nick" value={tgUser} onChange={(e) => setTgUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400" />
-                  <input type="text" placeholder="Contact Phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400" />
-                  <div className="flex justify-between items-baseline pt-6 px-2"><span className="text-[12px] font-black uppercase opacity-20 italic">Total Payment</span><span className="text-6xl font-black tracking-tighter text-white">{totalPrice}฿</span></div>
-                  <button onClick={handleSendOrder} disabled={totalPrice === 0 || (!tgUser && !phone) || orderStatus === "loading"} className="w-full py-8 rounded-[2.5rem] bg-white text-black font-black uppercase text-[13px] tracking-widest shadow-2xl active:scale-95 disabled:opacity-20 transition-all">Send Order</button>
+                  <div className="space-y-3">
+                    <input type="text" placeholder="@Telegram_Nick" value={tgUser} onChange={(e) => setTgUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400 focus:bg-white/10 transition-all placeholder:text-white/10" />
+                    <input type="text" placeholder="Contact Phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400 focus:bg-white/10 transition-all placeholder:text-white/10" />
+                  </div>
+                  <div className="flex justify-between items-baseline pt-6 px-4"><span className="text-[12px] font-black uppercase opacity-20 italic">Total Payment</span><span className="text-6xl font-black tracking-tighter text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">{totalPrice}฿</span></div>
+                  <button onClick={handleSendOrder} disabled={totalPrice === 0 || (!tgUser && !phone) || orderStatus === "loading"} className="w-full py-8 rounded-[2.5rem] bg-white text-black font-black uppercase text-[13px] tracking-widest shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 disabled:opacity-20 transition-all border border-white/20">Send Order</button>
                 </div>
               </>
             )}
