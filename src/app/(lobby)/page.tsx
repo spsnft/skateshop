@@ -7,7 +7,7 @@ import {
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
-// --- SETTINGS ---
+// --- CONFIG ---
 const TG_TOKEN = process.env.NEXT_PUBLIC_TG_TOKEN;
 const TG_CHAT_ID = process.env.NEXT_PUBLIC_TG_CHAT_ID;
 
@@ -46,7 +46,7 @@ const getImageUrl = (path: string) => {
 interface CartStore {
   items: any[];
   addItem: (item: any) => void;
-  removeItem: (id: string, weight: number) => void;
+  removeItem: (id: string, weight: any) => void;
   clearCart: () => void;
 }
 const useCart = create<CartStore>()(persist((set) => ({
@@ -60,7 +60,7 @@ const useCart = create<CartStore>()(persist((set) => ({
     items: state.items.filter(i => !(i.id === id && i.weight === weight))
   })),
   clearCart: () => set({ items: [] })
-}), { name: "bnd-cart-v4" }));
+}), { name: "bnd-cart-v5" }));
 
 // --- COMPONENT: BADGE ---
 const ProductBadge = ({ type }: { type: any }) => {
@@ -73,7 +73,7 @@ const ProductBadge = ({ type }: { type: any }) => {
   };
   if (!styles[safeType]) return null;
   return (
-    <div className={`absolute top-3 left-3 z-[40] px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight shadow-2xl ${styles[safeType]}`}>
+    <div className={`absolute top-4 left-4 z-[40] px-3 py-1 rounded-lg text-[9px] font-black uppercase shadow-2xl ${styles[safeType]}`}>
       {safeType}
     </div>
   );
@@ -84,16 +84,18 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
   const [weight, setWeight] = React.useState(1);
   const [isAdded, setIsAdded] = React.useState(false);
   const addItem = useCart(s => s.addItem);
-  const subcat = String(product.subcategory || "").toLowerCase().trim();
-  const style = GRADE_STYLES[subcat] || { color: "#34D399", bg: "bg-white/5", border: "border-white/10" };
   
-  const isBuds = product.category === "Buds";
-  const currentPrice = isBuds ? getInterpolatedPrice(weight, subcat) : (product.price || 0);
+  const subcat = String(product.subcategory || "").toLowerCase().trim();
+  const isBuds = String(product.category || "").toLowerCase().trim() === "buds";
+  
+  const style = isBuds ? (GRADE_STYLES[subcat] || { color: "#34D399", bg: "bg-white/5", border: "border-white/10" }) 
+                       : { color: "#FFF", bg: "bg-white/5", border: "border-white/10" };
+  
+  const currentPrice = isBuds ? getInterpolatedPrice(weight, subcat) : (Number(product.price) || 0);
 
   return (
     <div className={`relative flex flex-col rounded-[2.5rem] border p-5 backdrop-blur-xl ${style.bg} ${style.border}`}>
       <ProductBadge type={product.badge} />
-      
       <button onClick={() => onOpen(product)} className="absolute top-6 right-6 z-20 p-2 bg-black/40 rounded-full text-white/40"><Info size={16} /></button>
       <div className="aspect-square relative overflow-hidden rounded-[2rem] bg-black/60 mb-6 cursor-pointer" onClick={() => onOpen(product)}>
         <img src={getImageUrl(product.image)} alt="" className="w-full h-full object-contain" onError={(e) => e.currentTarget.src = "/product-placeholder.webp"} />
@@ -121,7 +123,7 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
         )}
       </div>
 
-      <button onClick={() => { addItem({ ...product, price: currentPrice, weight: isBuds ? weight : 1, quantity: 1 }); setIsAdded(true); setTimeout(() => setIsAdded(false), 1000); }}
+      <button onClick={() => { addItem({ ...product, price: currentPrice, weight: isBuds ? weight : '1pc', quantity: 1 }); setIsAdded(true); setTimeout(() => setIsAdded(false), 1000); }}
         className="w-full mt-8 py-5 rounded-[1.5rem] font-black uppercase text-[11px] shadow-lg active:scale-95 transition-all"
         style={{ backgroundColor: isAdded ? '#34D399' : style.color, color: '#000' }}>
         {isAdded ? "Added" : "Add to Cart"}
@@ -148,13 +150,25 @@ export default function IndexPage() {
     getProducts().then(setProducts);
   }, []);
 
-  const subcategories = Array.from(new Set(products.filter(p => p.category === activeCategory).map(p => p.subcategory).filter(Boolean)));
-  const visibleProducts = products.filter(p => p.category === activeCategory && (activeSubcat === "All" || p.subcategory === activeSubcat));
+  // Автоматический сбор подкатегорий из таблицы
+  const subcategories = React.useMemo(() => {
+    const filtered = products.filter(p => String(p.category).toLowerCase().trim() === activeCategory.toLowerCase());
+    const unique = Array.from(new Set(filtered.map(p => p.subcategory).filter(Boolean)));
+    return ["All", ...unique];
+  }, [products, activeCategory]);
+
+  const visibleProducts = React.useMemo(() => {
+    return products.filter(p => {
+      const matchCat = String(p.category).toLowerCase().trim() === activeCategory.toLowerCase();
+      const matchSub = activeSubcat === "All" || p.subcategory === activeSubcat;
+      return matchCat && matchSub;
+    });
+  }, [products, activeCategory, activeSubcat]);
 
   const handleSendOrder = async () => {
     if (!TG_TOKEN || !TG_CHAT_ID) return;
     setOrderStatus("loading");
-    const message = `🚀 *НОВЫЙ ЗАКАЗ*\n\n👤 TG: ${tgUser || "—"}\n📞 Тел: ${phone || "—"}\n\n🛒 *Товары:*\n${items.map(i => `• ${i.name} (${i.weight}g) x${i.quantity}`).join('\n')}\n\n💰 *ИТОГО: ${totalPrice}฿*`;
+    const message = `🚀 *НОВЫЙ ЗАКАЗ*\n\n👤 TG: ${tgUser || "—"}\n📞 Тел: ${phone || "—"}\n\n🛒 *Товары:*\n${items.map(i => `• ${i.name} (${i.weight}) x${i.quantity}`).join('\n')}\n\n💰 *ИТОГО: ${totalPrice}฿*`;
     try {
       await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -167,22 +181,20 @@ export default function IndexPage() {
 
   if (view === "landing") {
     return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-full max-w-sm flex flex-col items-center">
-          <img src="/images/logo-optimized.webp" alt="BND" className="w-52 h-52 object-contain mb-12 drop-shadow-[0_0_50px_rgba(52,211,153,0.1)]" />
-          <div className="grid grid-cols-1 gap-5 w-full">
-            {["Buds", "Accessories"].map((cat) => (
-              <button key={cat} onClick={() => { setActiveCategory(cat); setActiveSubcat("All"); setView("shop"); window.scrollTo(0,0); }} className="group flex justify-between items-center bg-white/5 border border-white/10 p-10 rounded-[3rem] hover:bg-white hover:text-black transition-all active:scale-95">
-                <div className="flex items-center gap-6 text-white group-hover:text-black">
-                  <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center">
-                    {cat === "Buds" ? <Leaf size={24} /> : <Zap size={24} />}
-                  </div>
-                  <span className="text-2xl font-black uppercase italic tracking-widest">{cat}</span>
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-8">
+        <img src="/images/logo-optimized.webp" alt="BND" className="w-52 h-52 object-contain mb-12 drop-shadow-[0_0_50px_rgba(52,211,153,0.1)]" />
+        <div className="grid grid-cols-1 gap-5 w-full max-w-sm">
+          {["Buds", "Accessories"].map((cat) => (
+            <button key={cat} onClick={() => { setActiveCategory(cat); setActiveSubcat("All"); setView("shop"); window.scrollTo(0,0); }} className="group flex justify-between items-center bg-white/5 border border-white/10 p-10 rounded-[3rem] hover:bg-white hover:text-black transition-all">
+              <div className="flex items-center gap-6">
+                <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-black/10">
+                  {cat === "Buds" ? <Leaf size={24} /> : <Zap size={24} />}
                 </div>
-                <ArrowRight size={28} className="opacity-20 group-hover:opacity-100" />
-              </button>
-            ))}
-          </div>
+                <span className="text-2xl font-black uppercase italic tracking-widest">{cat}</span>
+              </div>
+              <ArrowRight size={28} className="opacity-20 group-hover:opacity-100 transition-opacity" />
+            </button>
+          ))}
         </div>
       </div>
     );
@@ -196,7 +208,6 @@ export default function IndexPage() {
       </header>
 
       <div className="p-5 flex gap-3 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#050505]">
-        <button onClick={() => setActiveSubcat("All")} className={`px-7 py-3 rounded-2xl text-[10px] font-black uppercase flex-shrink-0 ${activeSubcat === "All" ? "bg-white text-black" : "text-white/20"}`}>All Items</button>
         {subcategories.map(sub => (
           <button key={sub} onClick={() => setActiveSubcat(sub)} className={`px-7 py-3 rounded-2xl text-[10px] font-black uppercase flex-shrink-0 ${activeSubcat === sub ? "bg-white text-black" : "text-white/20"}`}>{sub}</button>
         ))}
@@ -211,7 +222,7 @@ export default function IndexPage() {
       {isCartOpen && (
         <div className="fixed inset-0 z-[150] bg-black/95 flex justify-end" onClick={() => setIsCartOpen(false)}>
           <div className="h-full w-full max-w-md bg-[#0a0a0a] border-l border-white/10 p-12 flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-10"><h2 className="text-4xl font-black uppercase italic">My Cart</h2><button onClick={() => setIsCartOpen(false)}><X size={28}/></button></div>
+            <div className="flex justify-between items-center mb-10"><h2 className="text-4xl font-black uppercase italic text-white">Cart</h2><button onClick={() => setIsCartOpen(false)}><X size={28}/></button></div>
             
             {orderStatus === "success" ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center"><CheckCircle2 size={100} className="text-emerald-400 mb-8" /><h3 className="text-3xl font-black uppercase italic">Order Sent!</h3></div>
@@ -220,12 +231,12 @@ export default function IndexPage() {
                 <div className="flex-1 overflow-y-auto space-y-8 no-scrollbar">
                   {items.map(item => (
                     <div key={`${item.id}-${item.weight}`} className="flex gap-6 p-6 bg-white/5 rounded-[2.5rem] items-center border border-white/5 group">
-                      <img src={getImageUrl(item.image)} className="w-20 h-20 object-contain rounded-2xl" onError={(e) => e.currentTarget.src = "/product-placeholder.webp"} />
+                      <img src={getImageUrl(item.image)} className="w-20 h-20 object-contain rounded-2xl" />
                       <div className="flex-1">
-                        <div className="text-[13px] font-black uppercase italic mb-1">{item.name}</div>
-                        <div className="text-[11px] font-bold text-white/20 tracking-widest">{item.weight}g • {item.price}฿</div>
+                        <div className="text-[13px] font-black uppercase italic mb-1 text-white">{item.name}</div>
+                        <div className="text-[11px] font-bold text-white/20 tracking-widest">{item.weight} • {item.price}฿</div>
                       </div>
-                      <button onClick={() => removeItem(item.id, item.weight)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-90">
+                      <button onClick={() => removeItem(item.id, item.weight)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all">
                         <Trash2 size={20} />
                       </button>
                     </div>
@@ -233,10 +244,10 @@ export default function IndexPage() {
                 </div>
 
                 <div className="pt-10 border-t border-white/10 space-y-5">
-                  <input type="text" placeholder="@Telegram_Nick" value={tgUser} onChange={(e) => setTgUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400 transition-all" />
-                  <input type="text" placeholder="Contact Phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400 transition-all" />
-                  <div className="flex justify-between items-baseline pt-6 px-2"><span className="text-[12px] font-black uppercase opacity-20 italic">Total Payment</span><span className="text-6xl font-black tracking-tighter">{totalPrice}฿</span></div>
-                  <button onClick={handleSendOrder} disabled={totalPrice === 0 || (!tgUser && !phone) || orderStatus === "loading"} className="w-full py-8 rounded-[2.5rem] bg-white text-black font-black uppercase text-[13px] tracking-widest shadow-2xl active:scale-95 disabled:opacity-20 transition-all">Send Now</button>
+                  <input type="text" placeholder="@Telegram_Nick" value={tgUser} onChange={(e) => setTgUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400" />
+                  <input type="text" placeholder="Contact Phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400" />
+                  <div className="flex justify-between items-baseline pt-6 px-2"><span className="text-[12px] font-black uppercase opacity-20 italic">Total Payment</span><span className="text-6xl font-black tracking-tighter text-white">{totalPrice}฿</span></div>
+                  <button onClick={handleSendOrder} disabled={totalPrice === 0 || (!tgUser && !phone) || orderStatus === "loading"} className="w-full py-8 rounded-[2.5rem] bg-white text-black font-black uppercase text-[13px] tracking-widest shadow-2xl active:scale-95 disabled:opacity-20 transition-all">Send Order</button>
                 </div>
               </>
             )}
