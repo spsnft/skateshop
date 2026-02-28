@@ -7,7 +7,6 @@ export async function getProducts() {
     })
     const data = await response.json()
     
-    // Оставляем только те, где Stock > 0
     return data
       .filter((item: any) => item.Stock !== undefined && Number(item.Stock) > 0)
       .map((item: any) => ({
@@ -23,9 +22,9 @@ export async function getProducts() {
           "20": item.Price_20g
         },
         image: item.Photo || null, 
-        description: item.Description,
+        // Столбец J теперь официально Type
+        type: item.Description || item.Type || "", 
         stock: Number(item.Stock),
-        // ДОБАВЛЕНО: забираем поле badge из данных таблицы
         badge: item.badge || item.Badge || null 
       }))
   } catch (error) {
