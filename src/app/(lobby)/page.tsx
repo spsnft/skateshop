@@ -1,5 +1,5 @@
 "use client"
-// BND-UPDATE-V7: New Background #193D2E, Clean Filter Names, Fixed Cart
+// BND-UPDATE-V7.1: Fixed "All Grades", Green Glass Cart #193D2E
 import * as React from "react"
 import { getProducts } from "@/lib/fetchers/product"
 import { 
@@ -13,22 +13,22 @@ const TG_TOKEN = process.env.NEXT_PUBLIC_TG_TOKEN;
 const TG_CHAT_ID = process.env.NEXT_PUBLIC_TG_CHAT_ID;
 
 const PRICE_GRIDS: Record<string, Record<number, number>> = {
-  "silver grade": { 1: 150, 5: 700, 10: 1200, 20: 2000 },
-  "golden grade": { 1: 250, 5: 1100, 10: 1700, 20: 3000 },
-  "premium grade": { 1: 300, 5: 1300, 10: 2000, 20: 3500 },
+  "silver": { 1: 150, 5: 700, 10: 1200, 20: 2000 },
+  "golden": { 1: 250, 5: 1100, 10: 1700, 20: 3000 },
+  "premium": { 1: 300, 5: 1300, 10: 2000, 20: 3500 },
   "selected premium": { 1: 350, 5: 1500, 10: 2500, 20: 4000 }
 };
 
 const GRADE_STYLES: Record<string, any> = {
-  "silver grade": { color: "#C1C1C1", bg: "bg-white/5", border: "border-white/10", glow: "shadow-[0_0_20px_rgba(193,193,193,0.1)]" },
-  "golden grade": { color: "#FEC107", bg: "bg-[#FEC107]/5", border: "border-[#FEC107]/20", glow: "shadow-[0_0_20px_rgba(254,193,7,0.1)]" },
-  "premium grade": { color: "#34D399", bg: "bg-[#34D399]/10", border: "border-[#34D399]/20", glow: "shadow-[0_0_20px_rgba(52,211,153,0.1)]" },
+  "silver": { color: "#C1C1C1", bg: "bg-white/5", border: "border-white/10", glow: "shadow-[0_0_20px_rgba(193,193,193,0.1)]" },
+  "golden": { color: "#FEC107", bg: "bg-[#FEC107]/5", border: "border-[#FEC107]/20", glow: "shadow-[0_0_20px_rgba(254,193,7,0.1)]" },
+  "premium": { color: "#34D399", bg: "bg-[#34D399]/10", border: "border-[#34D399]/20", glow: "shadow-[0_0_20px_rgba(52,211,153,0.1)]" },
   "selected premium": { color: "#A855F7", bg: "bg-[#A855F7]/10", border: "border-[#A855F7]/20", glow: "shadow-[0_0_20px_rgba(168,85,247,0.1)]" },
 };
 
 const getInterpolatedPrice = (weight: number, subcategory: string) => {
   const cat = subcategory.toLowerCase().trim();
-  const grid = PRICE_GRIDS[cat] || PRICE_GRIDS["premium grade"];
+  const grid = PRICE_GRIDS[cat] || PRICE_GRIDS["premium"];
   let price = 0;
   if (weight <= 1) price = grid[1] * weight;
   else if (weight <= 5) price = grid[1] + (grid[5] - grid[1]) * ((weight - 1) / 4);
@@ -142,7 +142,7 @@ export default function IndexPage() {
   const [products, setProducts] = React.useState<any[]>([]);
   const [view, setView] = React.useState<"landing" | "shop">("landing");
   const [activeCategory, setActiveCategory] = React.useState("Buds");
-  const [activeSubcat, setActiveSubcat] = React.useState("All");
+  const [activeSubcat, setActiveSubcat] = React.useState("All Grades");
   const [isCartOpen, setIsCartOpen] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = React.useState<any | null>(null);
   const [orderStatus, setOrderStatus] = React.useState<"idle" | "loading" | "success">("idle");
@@ -159,6 +159,7 @@ export default function IndexPage() {
   const subcategories = React.useMemo(() => {
     const filtered = products.filter(p => String(p.category || "").toLowerCase().trim() === activeCategory.toLowerCase());
     const unique = Array.from(new Set(filtered.map(p => p.subcategory).filter(Boolean)));
+    // Жестко задаем All Grades
     return ["All Grades", ...unique];
   }, [products, activeCategory]);
 
@@ -219,7 +220,7 @@ export default function IndexPage() {
             onClick={() => setActiveSubcat(sub)} 
             className={`px-7 py-3 rounded-2xl text-[10px] font-black uppercase flex-shrink-0 transition-all ${activeSubcat === sub ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]" : "text-white/20 hover:text-white/40"}`}
           >
-            {sub.replace(/Grade/gi, "").trim()}
+            {sub}
           </button>
         ))}
       </div>
@@ -232,7 +233,7 @@ export default function IndexPage() {
 
       {isCartOpen && (
         <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-md flex justify-end" onClick={() => setIsCartOpen(false)}>
-          <div className="h-full w-full max-w-md bg-[#0a0a0a]/90 backdrop-blur-2xl border-l border-white/10 p-12 flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="h-full w-full max-w-md bg-[#193D2E]/90 backdrop-blur-2xl border-l border-white/10 p-12 flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-10"><h2 className="text-4xl font-black uppercase italic text-white tracking-tighter">My Cart</h2><button onClick={() => setIsCartOpen(false)} className="p-2 hover:bg-white/5 rounded-full transition-colors"><X size={28}/></button></div>
             
             {orderStatus === "success" ? (
