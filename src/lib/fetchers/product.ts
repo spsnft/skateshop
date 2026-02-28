@@ -2,14 +2,12 @@ export async function getProducts() {
   const baseUrl = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL
   
   try {
-    // Меняем no-store на revalidate: 60 для скорости и автообновления
     const response = await fetch(`${baseUrl}?action=getInventory`, { 
       next: { revalidate: 60 } 
     })
     const data = await response.json()
     
-    // Сначала фильтруем: оставляем только те, где Stock больше 0
-    // Также проверяем, чтобы Stock вообще был указан
+    // Оставляем только те, где Stock > 0
     return data
       .filter((item: any) => item.Stock !== undefined && Number(item.Stock) > 0)
       .map((item: any) => ({
@@ -26,7 +24,9 @@ export async function getProducts() {
         },
         image: item.Photo || null, 
         description: item.Description,
-        stock: Number(item.Stock)
+        stock: Number(item.Stock),
+        // ДОБАВЛЕНО: забираем поле badge из данных таблицы
+        badge: item.badge || item.Badge || null 
       }))
   } catch (error) {
     console.error("Ошибка загрузки товаров:", error)
