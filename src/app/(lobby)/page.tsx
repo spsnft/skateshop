@@ -1,4 +1,5 @@
 "use client"
+// BND-UPDATE-V6.1: Fixed Cart Quantity, Added Hints, Updated Placeholders
 import * as React from "react"
 import { getProducts } from "@/lib/fetchers/product"
 import { 
@@ -42,7 +43,7 @@ const getImageUrl = (path: string) => {
   return path.startsWith('http') ? path : `/images/${path.split('/').pop()}`;
 }
 
-// --- STORE ---
+// --- STORE (Logic fix for Quantity) ---
 interface CartStore {
   items: any[];
   addItem: (item: any) => void;
@@ -52,17 +53,21 @@ interface CartStore {
 const useCart = create<CartStore>()(persist((set) => ({
   items: [],
   addItem: (newItem) => set((state) => {
-    const ex = state.items.find(i => i.id === newItem.id && i.weight === newItem.weight);
-    if (ex) return { items: state.items.map(i => i === ex ? { ...i, quantity: i.quantity + 1 } : i) };
-    return { items: [...state.items, newItem] };
+    const existingIndex = state.items.findIndex(i => i.id === newItem.id && i.weight === newItem.weight);
+    if (existingIndex > -1) {
+      const newItems = [...state.items];
+      newItems[existingIndex].quantity += 1;
+      return { items: newItems };
+    }
+    return { items: [...state.items, { ...newItem, quantity: 1 }] };
   }),
   removeItem: (id, weight) => set((state) => ({
     items: state.items.filter(i => !(i.id === id && i.weight === weight))
   })),
   clearCart: () => set({ items: [] })
-}), { name: "bnd-cart-v5" }));
+}), { name: "bnd-cart-v6" }));
 
-// --- COMPONENT: BADGE (Glassmorphism Style) ---
+// --- COMPONENT: BADGE ---
 const ProductBadge = ({ type }: { type: any }) => {
   if (!type) return null;
   const safeType = String(type).toUpperCase().trim();
@@ -124,7 +129,7 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
         )}
       </div>
 
-      <button onClick={() => { addItem({ ...product, price: currentPrice, weight: isBuds ? weight : '1pc', quantity: 1 }); setIsAdded(true); setTimeout(() => setIsAdded(false), 1000); }}
+      <button onClick={() => { addItem({ ...product, price: currentPrice, weight: isBuds ? weight : '1pc' }); setIsAdded(true); setTimeout(() => setIsAdded(false), 1000); }}
         className="w-full mt-8 py-5 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-95 transition-all border border-white/10"
         style={{ backgroundColor: isAdded ? '#34D399' : style.color, color: '#000' }}>
         {isAdded ? "Added" : "Add to Cart"}
@@ -236,7 +241,7 @@ export default function IndexPage() {
                       </div>
                       <div className="flex-1 text-left">
                         <div className="text-[13px] font-black uppercase italic mb-1 text-white/90">{item.name}</div>
-                        <div className="text-[11px] font-bold text-white/20 tracking-widest">{item.weight} • {item.price}฿</div>
+                        <div className="text-[11px] font-bold text-white/20 tracking-widest">{item.weight} • {item.price * item.quantity}฿ {item.quantity > 1 && `(${item.quantity}pcs)`}</div>
                       </div>
                       <button onClick={() => removeItem(item.id, item.weight)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-90">
                         <Trash2 size={20} />
@@ -246,10 +251,13 @@ export default function IndexPage() {
                 </div>
 
                 <div className="pt-10 border-t border-white/10 space-y-5">
+                  <p className="text-[10px] font-black uppercase text-white/20 tracking-widest text-center italic">Fill at least one contact field</p>
+                  
                   <div className="space-y-3">
-                    <input type="text" placeholder="@Telegram_Nick" value={tgUser} onChange={(e) => setTgUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400 focus:bg-white/10 transition-all placeholder:text-white/10" />
-                    <input type="text" placeholder="Contact Phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400 focus:bg-white/10 transition-all placeholder:text-white/10" />
+                    <input type="text" placeholder="@Telegram" value={tgUser} onChange={(e) => setTgUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400 focus:bg-white/10 transition-all placeholder:text-white/10 backdrop-blur-md" />
+                    <input type="text" placeholder="Contact Phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400 focus:bg-white/10 transition-all placeholder:text-white/10 backdrop-blur-md" />
                   </div>
+                  
                   <div className="flex justify-between items-baseline pt-6 px-4"><span className="text-[12px] font-black uppercase opacity-20 italic">Total Payment</span><span className="text-6xl font-black tracking-tighter text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">{totalPrice}฿</span></div>
                   <button onClick={handleSendOrder} disabled={totalPrice === 0 || (!tgUser && !phone) || orderStatus === "loading"} className="w-full py-8 rounded-[2.5rem] bg-white text-black font-black uppercase text-[13px] tracking-widest shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 disabled:opacity-20 transition-all border border-white/20">Send Order</button>
                 </div>
