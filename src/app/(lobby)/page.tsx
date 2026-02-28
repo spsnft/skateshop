@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
 
 // --- SETTINGS ---
 const TG_TOKEN = process.env.NEXT_PUBLIC_TG_TOKEN;
@@ -74,7 +74,7 @@ const useCart = create<CartStore>()(persist((set) => ({
 }), { name: "bnd-cart-v3" }));
 
 // --- COMPONENTS ---
-function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => void }) {
+const ProductCard = React.memo(({ product, onOpen }: { product: any, onOpen: (p: any) => void }) => {
   const [weight, setWeight] = React.useState(1);
   const [isAdded, setIsAdded] = React.useState(false);
   const addItem = useCart(s => s.addItem);
@@ -83,7 +83,14 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
   const currentPrice = getInterpolatedPrice(weight, subcat);
 
   return (
-    <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`relative flex flex-col rounded-[2.2rem] border p-4 backdrop-blur-xl ${style.bg} ${style.border}`}>
+    <motion.div 
+      layout
+      initial={{ opacity: 0, scale: 0.9 }} 
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.2 }}
+      className={`relative flex flex-col rounded-[2.2rem] border p-4 backdrop-blur-xl ${style.bg} ${style.border}`}
+    >
       <button onClick={() => onOpen(product)} className="absolute top-5 right-5 z-20 p-2 bg-black/40 rounded-full text-white/40"><Info size={14} /></button>
       <div className="aspect-square relative overflow-hidden rounded-[1.8rem] bg-black/60 mb-5 cursor-pointer" onClick={() => onOpen(product)}>
         <img src={getImageUrl(product.image)} alt="" className="w-full h-full object-contain" onError={(e) => e.currentTarget.src = "/product-placeholder.webp"} />
@@ -109,11 +116,13 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
       <button onClick={() => { addItem({ ...product, price: currentPrice, weight, quantity: 1 }); setIsAdded(true); setTimeout(() => setIsAdded(false), 1000); }}
         className="w-full mt-6 py-4 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all"
         style={{ backgroundColor: isAdded ? '#34D399' : style.color, color: '#000' }}>
-        {isAdded ? "Added to Cart" : "Add to Cart"}
+        {isAdded ? "Added" : "Add to Cart"}
       </button>
     </motion.div>
   );
-}
+});
+
+ProductCard.displayName = "ProductCard";
 
 export default function IndexPage() {
   const [products, setProducts] = React.useState<any[]>([]);
@@ -134,7 +143,15 @@ export default function IndexPage() {
     getProducts().then(data => { setProducts(data); setLoading(false); });
   }, []);
 
-  // Получаем список подкатегорий для текущей категории
+  // --- ИСПРАВЛЕННАЯ ЛОГИКА ФИЛЬТРАЦИИ ---
+  const filteredProducts = React.useMemo(() => {
+    return products.filter(p => {
+      const matchCat = p.category === activeCategory;
+      const matchSub = activeSubcat === "All" || p.subcategory === activeSubcat;
+      return matchCat && matchSub;
+    });
+  }, [products, activeCategory, activeSubcat]);
+
   const subcategories = React.useMemo(() => {
     const filtered = products.filter(p => p.category === activeCategory);
     const unique = Array.from(new Set(filtered.map(p => p.subcategory).filter(Boolean)));
@@ -162,7 +179,7 @@ export default function IndexPage() {
           <img src="/images/logo-optimized.webp" alt="BND" className="w-44 h-44 object-contain mb-10 drop-shadow-[0_0_50px_rgba(52,211,153,0.1)]" />
           <div className="grid grid-cols-1 gap-4 w-full">
             {["Buds", "Accessories"].map((cat) => (
-              <button key={cat} onClick={() => { setActiveCategory(cat); setActiveSubcat("All"); setView("shop"); }} className="group flex justify-between items-center bg-white/5 border border-white/10 p-8 rounded-[2.5rem] hover:bg-white hover:text-black transition-all active:scale-95">
+              <button key={cat} onClick={() => { setActiveCategory(cat); setActiveSubcat("All"); setView("shop"); window.scrollTo(0,0); }} className="group flex justify-between items-center bg-white/5 border border-white/10 p-8 rounded-[2.5rem] hover:bg-white hover:text-black transition-all active:scale-95">
                 <div className="flex items-center gap-5">
                   <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-black/10">
                     {cat === "Buds" ? <Leaf size={20} /> : <Zap size={20} />}
@@ -185,7 +202,6 @@ export default function IndexPage() {
         <button onClick={() => setIsCartOpen(true)} className="relative p-4 bg-white/5 rounded-2xl border border-white/10 shadow-lg"><ShoppingCart size={20} />{items.length > 0 && <span className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-400 text-black text-[10px] font-black rounded-full flex items-center justify-center">{items.length}</span>}</button>
       </header>
       
-      {/* ЛЕНТА ПОДКАТЕГОРИЙ (ФИЛЬТР) */}
       <div className="p-4 flex gap-2 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#050505]">
         {subcategories.map(sub => (
           <button key={sub} onClick={() => setActiveSubcat(sub)} className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase transition-all flex-shrink-0 ${activeSubcat === sub ? "bg-white text-black" : "text-white/20"}`}>{sub}</button>
@@ -193,13 +209,14 @@ export default function IndexPage() {
       </div>
 
       <div className="container mx-auto px-5 mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {products
-          .filter(p => p.category === activeCategory)
-          .filter(p => activeSubcat === "All" || p.subcategory === activeSubcat)
-          .map(p => <ProductCard key={p.id} product={p} onOpen={setSelectedProduct} />)
-        }
+        <AnimatePresence mode="popLayout">
+          {filteredProducts.map(p => (
+            <ProductCard key={p.id} product={p} onOpen={setSelectedProduct} />
+          ))}
+        </AnimatePresence>
       </div>
 
+      {/* КОРЗИНА (БЕЗ ИЗМЕНЕНИЙ) */}
       <AnimatePresence>
         {isCartOpen && (
           <div className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-3xl flex justify-end" onClick={() => setIsCartOpen(false)}>
