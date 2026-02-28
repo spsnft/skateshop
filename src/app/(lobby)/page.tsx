@@ -150,16 +150,15 @@ export default function IndexPage() {
     getProducts().then(setProducts);
   }, []);
 
-  // Автоматический сбор подкатегорий из таблицы
   const subcategories = React.useMemo(() => {
-    const filtered = products.filter(p => String(p.category).toLowerCase().trim() === activeCategory.toLowerCase());
+    const filtered = products.filter(p => String(p.category || "").toLowerCase().trim() === activeCategory.toLowerCase());
     const unique = Array.from(new Set(filtered.map(p => p.subcategory).filter(Boolean)));
     return ["All", ...unique];
   }, [products, activeCategory]);
 
   const visibleProducts = React.useMemo(() => {
     return products.filter(p => {
-      const matchCat = String(p.category).toLowerCase().trim() === activeCategory.toLowerCase();
+      const matchCat = String(p.category || "").toLowerCase().trim() === activeCategory.toLowerCase();
       const matchSub = activeSubcat === "All" || p.subcategory === activeSubcat;
       return matchCat && matchSub;
     });
@@ -201,7 +200,7 @@ export default function IndexPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pb-24">
+    <div className="min-h-screen bg-[#050505] text-white pb-24 text-center">
       <header className="sticky top-0 z-[100] bg-[#050505]/95 backdrop-blur-md p-6 border-b border-white/5 flex justify-between items-center">
         <button onClick={() => setView("landing")} className="flex items-center gap-3 py-2.5 px-5 bg-white/5 rounded-2xl border border-white/10 text-[11px] font-black uppercase italic"><img src="/images/logo-optimized.webp" className="w-7 h-7 object-contain" />Back</button>
         <button onClick={() => setIsCartOpen(true)} className="relative p-5 bg-white/5 rounded-2xl border border-white/10 shadow-xl"><ShoppingCart size={22} />{items.length > 0 && <span className="absolute -top-1 -right-1 w-7 h-7 bg-emerald-400 text-black text-[11px] font-black rounded-full flex items-center justify-center">{items.length}</span>}</button>
