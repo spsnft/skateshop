@@ -1,5 +1,5 @@
 "use client"
-// BND-UPDATE-V6.1: Fixed Cart Quantity, Added Hints, Updated Placeholders
+// BND-UPDATE-V7: New Background #193D2E, Clean Filter Names, Fixed Cart
 import * as React from "react"
 import { getProducts } from "@/lib/fetchers/product"
 import { 
@@ -22,8 +22,8 @@ const PRICE_GRIDS: Record<string, Record<number, number>> = {
 const GRADE_STYLES: Record<string, any> = {
   "silver grade": { color: "#C1C1C1", bg: "bg-white/5", border: "border-white/10", glow: "shadow-[0_0_20px_rgba(193,193,193,0.1)]" },
   "golden grade": { color: "#FEC107", bg: "bg-[#FEC107]/5", border: "border-[#FEC107]/20", glow: "shadow-[0_0_20px_rgba(254,193,7,0.1)]" },
-  "premium grade": { color: "#34D399", bg: "bg-[#193D2E]/20", border: "border-[#34D399]/20", glow: "shadow-[0_0_20px_rgba(52,211,153,0.1)]" },
-  "selected premium": { color: "#A855F7", bg: "bg-[#4B2E63]/20", border: "border-[#A855F7]/20", glow: "shadow-[0_0_20px_rgba(168,85,247,0.1)]" },
+  "premium grade": { color: "#34D399", bg: "bg-[#34D399]/10", border: "border-[#34D399]/20", glow: "shadow-[0_0_20px_rgba(52,211,153,0.1)]" },
+  "selected premium": { color: "#A855F7", bg: "bg-[#A855F7]/10", border: "border-[#A855F7]/20", glow: "shadow-[0_0_20px_rgba(168,85,247,0.1)]" },
 };
 
 const getInterpolatedPrice = (weight: number, subcategory: string) => {
@@ -43,7 +43,7 @@ const getImageUrl = (path: string) => {
   return path.startsWith('http') ? path : `/images/${path.split('/').pop()}`;
 }
 
-// --- STORE (Logic fix for Quantity) ---
+// --- STORE ---
 interface CartStore {
   items: any[];
   addItem: (item: any) => void;
@@ -102,7 +102,7 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
     <div className={`relative flex flex-col rounded-[2.5rem] border p-5 backdrop-blur-2xl transition-all duration-300 ${style.bg} ${style.border} ${style.glow}`}>
       <button onClick={() => onOpen(product)} className="absolute top-6 right-6 z-20 p-2 bg-black/20 backdrop-blur-md rounded-full text-white/40 border border-white/5 hover:text-white transition-colors"><Info size={16} /></button>
       
-      <div className="aspect-square relative overflow-hidden rounded-[2rem] bg-black/40 mb-6 cursor-pointer border border-white/5" onClick={() => onOpen(product)}>
+      <div className="aspect-square relative overflow-hidden rounded-[2rem] bg-black/40 mb-6 cursor-pointer border border-white/5 shadow-inner" onClick={() => onOpen(product)}>
         <ProductBadge type={product.badge} />
         <img src={getImageUrl(product.image)} alt="" className="w-full h-full object-contain" onError={(e) => e.currentTarget.src = "/product-placeholder.webp"} />
       </div>
@@ -159,13 +159,13 @@ export default function IndexPage() {
   const subcategories = React.useMemo(() => {
     const filtered = products.filter(p => String(p.category || "").toLowerCase().trim() === activeCategory.toLowerCase());
     const unique = Array.from(new Set(filtered.map(p => p.subcategory).filter(Boolean)));
-    return ["All", ...unique];
+    return ["All Grades", ...unique];
   }, [products, activeCategory]);
 
   const visibleProducts = React.useMemo(() => {
     return products.filter(p => {
       const matchCat = String(p.category || "").toLowerCase().trim() === activeCategory.toLowerCase();
-      const matchSub = activeSubcat === "All" || p.subcategory === activeSubcat;
+      const matchSub = activeSubcat === "All Grades" || p.subcategory === activeSubcat;
       return matchCat && matchSub;
     });
   }, [products, activeCategory, activeSubcat]);
@@ -186,11 +186,11 @@ export default function IndexPage() {
 
   if (view === "landing") {
     return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-8">
+      <div className="min-h-screen bg-[#193D2E] flex flex-col items-center justify-center p-8">
         <img src="/images/logo-optimized.webp" alt="BND" className="w-52 h-52 object-contain mb-12 drop-shadow-[0_0_50px_rgba(52,211,153,0.1)]" />
         <div className="grid grid-cols-1 gap-5 w-full max-w-sm">
           {["Buds", "Accessories"].map((cat) => (
-            <button key={cat} onClick={() => { setActiveCategory(cat); setActiveSubcat("All"); setView("shop"); window.scrollTo(0,0); }} className="group flex justify-between items-center bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[3rem] hover:bg-white hover:text-black transition-all active:scale-95 shadow-2xl">
+            <button key={cat} onClick={() => { setActiveCategory(cat); setActiveSubcat("All Grades"); setView("shop"); window.scrollTo(0,0); }} className="group flex justify-between items-center bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[3rem] hover:bg-white hover:text-black transition-all active:scale-95 shadow-2xl">
               <div className="flex items-center gap-6">
                 <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-black/10 transition-colors">
                   {cat === "Buds" ? <Leaf size={24} /> : <Zap size={24} />}
@@ -206,15 +206,21 @@ export default function IndexPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pb-24 text-center">
-      <header className="sticky top-0 z-[100] bg-[#050505]/80 backdrop-blur-xl p-6 border-b border-white/5 flex justify-between items-center">
+    <div className="min-h-screen bg-[#193D2E] text-white pb-24 text-center">
+      <header className="sticky top-0 z-[100] bg-[#193D2E]/80 backdrop-blur-xl p-6 border-b border-white/5 flex justify-between items-center">
         <button onClick={() => setView("landing")} className="flex items-center gap-3 py-2.5 px-5 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 text-[11px] font-black uppercase italic transition-all active:scale-95"><img src="/images/logo-optimized.webp" className="w-7 h-7 object-contain" />Back</button>
         <button onClick={() => setIsCartOpen(true)} className="relative p-5 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl transition-all active:scale-95"><ShoppingCart size={22} />{items.length > 0 && <span className="absolute -top-1 -right-1 w-7 h-7 bg-emerald-400 text-black text-[11px] font-black rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">{items.length}</span>}</button>
       </header>
 
-      <div className="p-5 flex gap-3 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#050505]/50 backdrop-blur-sm">
+      <div className="p-5 flex gap-3 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#193D2E]/50 backdrop-blur-sm">
         {subcategories.map(sub => (
-          <button key={sub} onClick={() => setActiveSubcat(sub)} className={`px-7 py-3 rounded-2xl text-[10px] font-black uppercase flex-shrink-0 transition-all ${activeSubcat === sub ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]" : "text-white/20 hover:text-white/40"}`}>{sub}</button>
+          <button 
+            key={sub} 
+            onClick={() => setActiveSubcat(sub)} 
+            className={`px-7 py-3 rounded-2xl text-[10px] font-black uppercase flex-shrink-0 transition-all ${activeSubcat === sub ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]" : "text-white/20 hover:text-white/40"}`}
+          >
+            {sub.replace(/Grade/gi, "").trim()}
+          </button>
         ))}
       </div>
 
