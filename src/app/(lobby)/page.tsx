@@ -12,7 +12,9 @@ import {
   ArrowRight,
   Leaf,
   Droplets,
-  Zap
+  Zap,
+  Phone,
+  Send
 } from "lucide-react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
@@ -35,7 +37,7 @@ const getImageUrl = (path: string) => {
   return path.startsWith('http') ? path : `/images/${path.split('/').pop()}`;
 }
 
-// --- КОРЗИНА ---
+// --- STORE ---
 interface CartStore {
   items: any[];
   addItem: (item: any) => void;
@@ -57,7 +59,6 @@ const useCart = create<CartStore>()(persist((set) => ({
   clearCart: () => set({ items: [] })
 }), { name: "bnd-cart-v2" }));
 
-// --- ПОЛНАЯ КАРТОЧКА ---
 function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => void }) {
   const [weight, setWeight] = React.useState("1");
   const [isAdded, setIsAdded] = React.useState(false);
@@ -76,7 +77,7 @@ function ProductCard({ product, onOpen }: { product: any, onOpen: (p: any) => vo
         <div className="text-2xl font-black tracking-tighter mb-4" style={{ color: style.color }}>{price}฿</div>
         <div className="flex gap-1 bg-black/40 p-1 rounded-xl border border-white/5 mb-4">
           {["1", "5", "10", "20"].map(w => (
-            <button key={w} onClick={() => setWeight(w)} className={`flex-1 py-1.5 text-[9px] font-black rounded-lg transition-all ${weight === w ? "bg-white text-black shadow-lg" : "text-white/20"}`}>{w}g</button>
+            <button key={w} onClick={() => setWeight(w)} className={`flex-1 py-1.5 text-[9px] font-black rounded-lg transition-all ${weight === w ? "bg-white text-black" : "text-white/20"}`}>{w}g</button>
           ))}
         </div>
       </div>
@@ -98,15 +99,13 @@ export default function IndexPage() {
   const [selectedProduct, setSelectedProduct] = React.useState<any | null>(null);
   const [orderStatus, setOrderStatus] = React.useState<"idle" | "loading" | "success">("idle");
   const [tgUser, setTgUser] = React.useState("");
+  const [phone, setPhone] = React.useState("");
 
   const { items, updateQuantity, removeItem, clearCart } = useCart();
   const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   React.useEffect(() => {
-    getProducts().then(data => { 
-      setProducts(data); 
-      setLoading(false); 
-    });
+    getProducts().then(data => { setProducts(data); setLoading(false); });
   }, []);
 
   const categories = ["Buds", "Concentrates", "Accessories"];
@@ -114,7 +113,13 @@ export default function IndexPage() {
   const handleSendOrder = async () => {
     if (!TG_TOKEN || !TG_CHAT_ID) return;
     setOrderStatus("loading");
-    const message = `🚀 *НОВЫЙ ЗАКАЗ*\n\n👤 Клиент: ${tgUser || "Аноним"}\n\n🛒 *Товары:*\n${items.map(i => `• ${i.name} (${i.weight}g) x${i.quantity}`).join('\n')}\n\n💰 *ИТОГО: ${totalPrice}฿*`;
+    
+    const message = `🚀 *НОВЫЙ ЗАКАЗ*\n\n` +
+                   `👤 TG: ${tgUser || "—"}\n` +
+                   `📞 Тел: ${phone || "—"}\n\n` +
+                   `🛒 *Товары:*\n${items.map(i => `• ${i.name} (${i.weight}g) x${i.quantity}`).join('\n')}\n\n` +
+                   `💰 *ИТОГО: ${totalPrice}฿*`;
+
     try {
       await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
         method: "POST",
@@ -122,7 +127,7 @@ export default function IndexPage() {
         body: JSON.stringify({ chat_id: TG_CHAT_ID, text: message, parse_mode: "Markdown" })
       });
       setOrderStatus("success");
-      setTimeout(() => { clearCart(); setIsCartOpen(false); setOrderStatus("idle"); }, 2000);
+      setTimeout(() => { clearCart(); setIsCartOpen(false); setOrderStatus("idle"); setTgUser(""); setPhone(""); }, 2000);
     } catch (e) { setOrderStatus("idle"); }
   };
 
@@ -133,7 +138,7 @@ export default function IndexPage() {
           <img src="/images/logo-optimized.webp" alt="BND" className="w-44 h-44 object-contain mb-10 drop-shadow-[0_0_50px_rgba(52,211,153,0.1)]" />
           
           <div className="grid grid-cols-1 gap-4 w-full">
-            {categories.map((cat, idx) => (
+            {categories.map((cat) => (
               <button 
                 key={cat}
                 onClick={() => { setActiveCategory(cat); setView("shop"); }}
@@ -151,8 +156,6 @@ export default function IndexPage() {
               </button>
             ))}
           </div>
-          
-          <p className="mt-12 text-[10px] font-bold text-white/20 uppercase tracking-[0.5em] italic">App Service Terminal</p>
         </motion.div>
       </div>
     );
@@ -171,6 +174,15 @@ export default function IndexPage() {
         </button>
       </header>
 
+      <div className="p-4 flex gap-2 overflow-x-auto no-scrollbar border-b border-white/5 bg-[#050505]">
+        {categories.map(cat => (
+          <button key={cat} onClick={() => setActiveCategory(cat)} 
+            className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase transition-all flex-shrink-0 ${activeCategory === cat ? "bg-white text-black" : "text-white/20"}`}>
+            {cat}
+          </button>
+        ))}
+      </div>
+
       <div className="container mx-auto px-5 mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {products.filter(p => p.category === activeCategory).map(p => <ProductCard key={p.id} product={p} onOpen={setSelectedProduct} />)}
       </div>
@@ -179,7 +191,8 @@ export default function IndexPage() {
         {isCartOpen && (
           <div className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-3xl flex justify-end" onClick={() => setIsCartOpen(false)}>
             <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} className="h-full w-full max-w-md bg-[#0a0a0a] border-l border-white/10 p-10 flex flex-col" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-12"><h2 className="text-4xl font-black uppercase italic">Cart</h2><button onClick={() => setIsCartOpen(false)}><X size={24}/></button></div>
+              <div className="flex justify-between items-center mb-8"><h2 className="text-4xl font-black uppercase italic">Cart</h2><button onClick={() => setIsCartOpen(false)}><X size={24}/></button></div>
+              
               {orderStatus === "success" ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center">
                   <CheckCircle2 size={80} className="text-emerald-400 mb-6" />
@@ -203,10 +216,42 @@ export default function IndexPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="pt-10 border-t border-white/10 space-y-8">
-                    <input type="text" placeholder="@Your_Telegram_Nick" value={tgUser} onChange={(e) => setTgUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] p-6 text-sm font-bold text-white outline-none focus:border-emerald-400 transition-colors" />
-                    <div className="flex justify-between items-baseline"><span className="text-sm font-black uppercase opacity-20 italic">Total Payment</span><span className="text-5xl font-black tracking-tighter">{totalPrice}฿</span></div>
-                    <button onClick={handleSendOrder} className="w-full py-7 rounded-[2rem] bg-white text-black font-black uppercase text-[12px] tracking-widest shadow-2xl active:scale-95 transition-all">Send Order</button>
+
+                  <div className="pt-8 border-t border-white/10 space-y-4">
+                    <p className="text-[10px] font-black uppercase text-white/20 tracking-widest text-center italic">Fill at least one contact field</p>
+                    
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="relative">
+                        <Send className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20" size={16} />
+                        <input 
+                          type="text" 
+                          placeholder="@Telegram_Username" 
+                          value={tgUser} 
+                          onChange={(e) => setTgUser(e.target.value)} 
+                          className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] py-5 pl-14 pr-6 text-xs font-bold text-white outline-none focus:border-emerald-400 transition-colors" 
+                        />
+                      </div>
+                      <div className="relative">
+                        <Phone className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20" size={16} />
+                        <input 
+                          type="text" 
+                          placeholder="Phone Number" 
+                          value={phone} 
+                          onChange={(e) => setPhone(e.target.value)} 
+                          className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] py-5 pl-14 pr-6 text-xs font-bold text-white outline-none focus:border-emerald-400 transition-colors" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-baseline pt-4"><span className="text-sm font-black uppercase opacity-20 italic">Total Payment</span><span className="text-5xl font-black tracking-tighter">{totalPrice}฿</span></div>
+                    
+                    <button 
+                      onClick={handleSendOrder} 
+                      disabled={totalPrice === 0 || (!tgUser && !phone) || orderStatus === "loading"} 
+                      className="w-full py-7 rounded-[2rem] bg-white text-black font-black uppercase text-[12px] tracking-widest shadow-2xl active:scale-95 transition-all disabled:opacity-20"
+                    >
+                      {orderStatus === "loading" ? "Sending..." : "Send Order"}
+                    </button>
                   </div>
                 </>
               )}
