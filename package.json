@@ -9,8 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "dependencies": {
     "next": "14.2.5",
@@ -20,7 +19,7 @@
     "framer-motion": "^11.3.2",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.4.0",
-    "zustan": "^4.5.2"
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "typescript": "^5.5.3",
