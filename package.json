@@ -2,24 +2,22 @@
   "name": "bnd-delivery",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
-  "engines": {
-    "node": "20.x"
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
     "next": "14.2.5",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "lucide-react": "^0.454.0",
-    "framer-motion": "^11.3.2",
+    "framer-motion": "^11.11.17",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.4.0",
-    "zustand": "^4.5.2"
+    "tailwind-merge": "^2.5.2",
+    "tailwindcss-animate": "^1.0.7",
+    "zustand": "^4.5.5"
   },
   "devDependencies": {
     "typescript": "^5.5.3",
