@@ -1,95 +1,200 @@
 "use client"
 import * as React from "react"
-import { ShoppingCart, ArrowRight, Leaf, Zap, ChevronLeft } from "lucide-react"
+import { getProducts } from "@/lib/product" // Наш новый безопасный фетчер
+import { 
+  ShoppingCart, X, Trash2, Info, CheckCircle2, ArrowRight, Leaf, Zap
+} from "lucide-react"
+import { create } from "zustand"
+import { persist } from "zustand/middleware"
 
-// ЦВЕТА И ТЕНИ (Жестко зашиты)
-const GRADE_STYLES: any = {
-  "premium": { color: "#34D399", glass: "rgba(52,211,153,0.08)", border: "rgba(52,211,153,0.2)" },
-  "golden": { color: "#FEC107", glass: "rgba(254,193,7,0.08)", border: "rgba(254,193,7,0.2)" },
-  "silver": { color: "#C1C1C1", glass: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.1)" },
+// --- CONFIG & PRICE LOGIC ---
+const TG_TOKEN = process.env.NEXT_PUBLIC_TG_TOKEN;
+const TG_CHAT_ID = process.env.NEXT_PUBLIC_TG_CHAT_ID;
+
+const PRICE_GRIDS: Record<string, Record<number, number>> = {
+  "silver": { 1: 150, 5: 700, 10: 1200, 20: 2000 },
+  "golden": { 1: 250, 5: 1100, 10: 1700, 20: 3000 },
+  "premium": { 1: 300, 5: 1300, 10: 2000, 20: 3500 },
+  "selected premium": { 1: 350, 5: 1500, 10: 2500, 20: 4000 }
 };
 
-export default function IndexPage() {
-  const [view, setView] = React.useState<"landing" | "shop">("landing");
-  const [activeCat, setActiveCat] = React.useState("Buds");
+const GRADE_STYLES: Record<string, any> = {
+  "silver": { color: "#C1C1C1", bg: "bg-white/5", border: "border-white/10" },
+  "golden": { color: "#FEC107", bg: "bg-[#FEC107]/5", border: "border-[#FEC107]/20" },
+  "premium": { color: "#34D399", bg: "bg-[#34D399]/10", border: "border-[#34D399]/20" },
+  "selected premium": { color: "#A855F7", bg: "bg-[#A855F7]/10", border: "border-[#A855F7]/20" },
+};
 
-  // ТЕ ЖЕ ТОВАРЫ, ЧТО БЫЛИ В ТАБЛИЦЕ
-  const products = [
-    { id: "1", name: "Premium Bud", price: 50, category: "Buds", grade: "premium" },
-    { id: "2", name: "Golden Kush", price: 80, category: "Buds", grade: "golden" },
-  ];
+const getInterpolatedPrice = (weight: number, subcategory: string) => {
+  const cat = subcategory.toLowerCase().trim();
+  const grid = PRICE_GRIDS[cat] || PRICE_GRIDS["premium"];
+  let price = 0;
+  if (weight <= 1) price = grid[1] * weight;
+  else if (weight <= 5) price = grid[1] + (grid[5] - grid[1]) * ((weight - 1) / 4);
+  else if (weight <= 10) price = grid[5] + (grid[10] - grid[5]) * ((weight - 5) / 5);
+  else if (weight <= 20) price = grid[10] + (grid[20] - grid[10]) * ((weight - 10) / 10);
+  else price = (grid[20] / 20) * weight;
+  return Math.round(price);
+};
+
+// --- STORE ---
+interface CartStore {
+  items: any[];
+  addItem: (item: any) => void;
+  removeItem: (id: string, weight: any) => void;
+  clearCart: () => void;
+}
+const useCart = create<CartStore>()(persist((set) => ({
+  items: [],
+  addItem: (newItem) => set((state) => {
+    const ex = state.items.findIndex(i => i.id === newItem.id && i.weight === newItem.weight);
+    if (ex > -1) {
+      const newItems = [...state.items];
+      newItems[ex].quantity += 1;
+      return { items: newItems };
+    }
+    return { items: [...state.items, { ...newItem, quantity: 1 }] };
+  }),
+  removeItem: (id, weight) => set((state) => ({
+    items: state.items.filter(i => !(i.id === id && i.weight === weight))
+  })),
+  clearCart: () => set({ items: [] })
+}), { name: "bnd-cart-v8" }));
+
+// --- COMPONENTS ---
+function ProductCard({ product }: { product: any }) {
+  const [weight, setWeight] = React.useState(1);
+  const [isAdded, setIsAdded] = React.useState(false);
+  const addItem = useCart(s => s.addItem);
+  
+  const subcat = String(product.subcategory || "").toLowerCase().trim();
+  const isBuds = String(product.category || "").toLowerCase().trim() === "buds";
+  const style = isBuds ? (GRADE_STYLES[subcat] || GRADE_STYLES["premium"]) : { color: "#FFF", bg: "bg-white/5", border: "border-white/10" };
+  const currentPrice = isBuds ? getInterpolatedPrice(weight, subcat) : (Number(product.price) || 0);
+
+  return (
+    <div className={`relative flex flex-col rounded-[2.5rem] border p-6 backdrop-blur-3xl transition-all ${style.bg} ${style.border}`}>
+      <div className="aspect-square relative overflow-hidden rounded-[2rem] bg-black/40 mb-6 border border-white/5">
+        <img src={product.image?.startsWith('http') ? product.image : `/images/${product.image}`} alt="" className="w-full h-full object-contain" />
+      </div>
+      <div className="flex-1 space-y-4">
+        <div className="flex justify-between items-start">
+          <h3 className="font-bold text-white/90 text-lg uppercase italic">{product.name}</h3>
+          <span className="text-[9px] font-black uppercase text-white/40 border border-white/10 px-2 py-1 rounded-full">{product.type || 'Gear'}</span>
+        </div>
+        <div className="text-4xl font-black italic tracking-tighter" style={{ color: style.color }}>{currentPrice}฿</div>
+        
+        {isBuds && (
+          <div className="space-y-4 pt-2">
+            <div className="flex justify-between items-end"><span className="text-[10px] font-black uppercase opacity-20">Weight</span><span className="text-xl font-black italic">{weight}g</span></div>
+            <input type="range" min="0.5" max="20" step="0.5" value={weight} onChange={(e) => setWeight(parseFloat(e.target.value))} className="w-full accent-white" />
+            <div className="grid grid-cols-4 gap-2">
+              {[1, 5, 10, 20].map(v => (
+                <button key={v} onClick={() => setWeight(v)} className={`py-2 text-[10px] font-black rounded-lg border transition-all ${weight === v ? "bg-white text-black" : "border-white/10 text-white/30"}`}>{v}g</button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <button onClick={() => { addItem({ ...product, price: currentPrice, weight: isBuds ? `${weight}g` : '1pc' }); setIsAdded(true); setTimeout(() => setIsAdded(false), 1000); }}
+        className="w-full mt-6 py-5 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest transition-all"
+        style={{ backgroundColor: isAdded ? '#34D399' : style.color, color: '#000' }}>
+        {isAdded ? "Added" : "Add to Cart"}
+      </button>
+    </div>
+  );
+}
+
+export default function IndexPage() {
+  const [products, setProducts] = React.useState<any[]>([]);
+  const [view, setView] = React.useState<"landing" | "shop">("landing");
+  const [activeCategory, setActiveCategory] = React.useState("Buds");
+  const [activeSubcat, setActiveSubcat] = React.useState("All Grades");
+  const [isCartOpen, setIsCartOpen] = React.useState(false);
+  const [tgUser, setTgUser] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+
+  const { items, removeItem, clearCart } = useCart();
+  const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  React.useEffect(() => {
+    getProducts().then(setProducts);
+  }, []);
+
+  const filteredProducts = products.filter(p => {
+    const matchCat = String(p.category).toLowerCase() === activeCategory.toLowerCase();
+    const matchSub = activeSubcat === "All Grades" || p.subcategory === activeSubcat;
+    return matchCat && matchSub;
+  });
+
+  const handleSendOrder = async () => {
+    const message = `🚀 *NEW ORDER*\n\n👤 TG: ${tgUser}\n📞 Phone: ${phone}\n\n🛒 *Items:*\n${items.map(i => `• ${i.name} (${i.weight}) x${i.quantity}`).join('\n')}\n\n💰 *TOTAL: ${totalPrice}฿*`;
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TG_CHAT_ID, text: message, parse_mode: "Markdown" })
+    });
+    clearCart(); setIsCartOpen(false);
+  };
 
   if (view === "landing") {
     return (
-      <main className="fixed inset-0 w-full h-full flex flex-col items-center justify-center bg-[#193D2E]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(52,211,153,0.15)_0%,transparent_70%)] pointer-events-none" />
-        
-        {/* ОГРОМНЫЙ ЛОГОТИП */}
-        <div className="w-64 h-64 mb-24 flex items-center justify-center bg-white/5 rounded-full border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] backdrop-blur-3xl">
-           <h1 className="text-8xl font-black italic text-white tracking-tighter">BND</h1>
+      <div className="min-h-screen bg-[#193D2E] flex flex-col items-center justify-center p-8">
+        <div className="w-48 h-48 mb-16 flex items-center justify-center bg-white/5 rounded-full border border-white/10 backdrop-blur-3xl shadow-2xl">
+           <span className="text-6xl font-black italic text-white">BND</span>
         </div>
-        
-        {/* КРУПНЫЕ КНОПКИ */}
-        <div className="grid grid-cols-2 gap-10 w-full max-w-2xl px-6">
-          {[
-            { id: "Buds", icon: <Leaf size={60} />, label: "Buds" },
-            { id: "Accessories", icon: <Zap size={60} />, label: "Gear" }
-          ].map((cat) => (
-            <button 
-              key={cat.id} 
-              onClick={() => { setActiveCat(cat.id); setView("shop"); }} 
-              className="aspect-square flex flex-col items-center justify-center bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[5rem] hover:bg-white hover:text-[#193D2E] transition-all group active:scale-90"
-              style={{ WebkitBackdropFilter: 'blur(50px)' }}
-            >
-              <div className="mb-6 group-hover:scale-110 transition-transform">{cat.icon}</div>
-              <span className="text-3xl font-black uppercase italic tracking-widest">{cat.label}</span>
-              <ArrowRight size={30} className="mt-6 opacity-20 group-hover:opacity-100 group-hover:translate-x-4 transition-all" />
+        <div className="grid grid-cols-1 gap-6 w-full max-w-sm">
+          {["Buds", "Accessories"].map((cat) => (
+            <button key={cat} onClick={() => { setActiveCategory(cat); setView("shop"); }} className="group flex justify-between items-center bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[3rem] hover:bg-white hover:text-[#193D2E] transition-all shadow-2xl">
+              <span className="text-2xl font-black uppercase italic tracking-widest">{cat}</span>
+              <ArrowRight size={28} className="opacity-20 group-hover:opacity-100" />
             </button>
           ))}
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#193D2E] text-white p-10 pt-24 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-24">
-        <button onClick={() => setView("landing")} className="flex items-center gap-4 bg-white/10 px-10 py-5 rounded-full border border-white/10 text-xs font-black uppercase tracking-[0.3em]">
-          <ChevronLeft size={20} /> Back
-        </button>
-        <span className="text-4xl font-black italic">BND</span>
-      </div>
+    <div className="min-h-screen bg-[#193D2E] text-white pb-32">
+      <header className="sticky top-0 z-50 bg-[#193D2E]/80 backdrop-blur-xl p-6 border-b border-white/5 flex justify-between items-center">
+        <button onClick={() => setView("landing")} className="flex items-center gap-2 bg-white/5 px-6 py-3 rounded-xl border border-white/10 font-black uppercase italic text-[10px]">Back</button>
+        <button onClick={() => setIsCartOpen(true)} className="relative p-4 bg-white/5 rounded-xl border border-white/10"><ShoppingCart size={20} />{items.length > 0 && <span className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-400 text-black text-[10px] font-black rounded-full flex items-center justify-center">{items.length}</span>}</button>
+      </header>
 
-      <h1 className="text-[10rem] font-black italic uppercase mb-20 tracking-tighter leading-none opacity-100">
-        {activeCat === "Accessories" ? "Gear" : activeCat}
-      </h1>
-
-      <div className="grid gap-12 pb-40">
-        {products.filter(p => p.category === (activeCat === "Accessories" ? "Accessories" : "Buds")).map((p) => (
-          <div 
-            key={p.id} 
-            className="p-16 rounded-[4.5rem] border shadow-2xl backdrop-blur-3xl"
-            style={{ 
-              backgroundColor: GRADE_STYLES[p.grade]?.glass, 
-              borderColor: GRADE_STYLES[p.grade]?.border,
-              WebkitBackdropFilter: 'blur(60px)' 
-            }}
-          >
-            <div className="flex justify-between items-start mb-12">
-              <div>
-                <h3 className="text-6xl font-black italic mb-4 uppercase tracking-tighter">{p.name}</h3>
-                <span style={{ color: GRADE_STYLES[p.grade]?.color }} className="text-sm font-black uppercase tracking-[0.4em]">
-                  {p.grade}
-                </span>
-              </div>
-              <p className="text-7xl font-black italic tracking-tighter">${p.price}</p>
-            </div>
-            <button className="w-full py-10 bg-white text-[#193D2E] rounded-[3rem] font-black uppercase italic text-3xl shadow-2xl hover:scale-[1.02] active:scale-95 transition-all">
-              Add to cart
-            </button>
-          </div>
+      <div className="p-6 overflow-x-auto flex gap-3 no-scrollbar bg-black/10 border-b border-white/5">
+        {["All Grades", "Silver", "Golden", "Premium", "Selected Premium"].map(sub => (
+          <button key={sub} onClick={() => setActiveSubcat(sub)} className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase flex-shrink-0 transition-all ${activeSubcat === sub ? "bg-white text-black" : "bg-white/5 text-white/30"}`}>{sub}</button>
         ))}
       </div>
+
+      <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        {filteredProducts.map(p => <ProductCard key={p.id} product={p} />)}
+      </div>
+
+      {isCartOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex justify-end" onClick={() => setIsCartOpen(false)}>
+          <div className="h-full w-full max-w-md bg-[#193D2E] border-l border-white/10 p-10 flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-10"><h2 className="text-3xl font-black uppercase italic">My Cart</h2><button onClick={() => setIsCartOpen(false)}><X size={30}/></button></div>
+            <div className="flex-1 overflow-y-auto space-y-6">
+              {items.map(i => (
+                <div key={`${i.id}-${i.weight}`} className="flex gap-4 p-4 bg-white/5 rounded-2xl items-center border border-white/5">
+                  <div className="flex-1 text-left">
+                    <p className="font-black uppercase italic text-sm">{i.name}</p>
+                    <p className="text-[10px] opacity-30">{i.weight} • {i.price * i.quantity}฿</p>
+                  </div>
+                  <button onClick={() => removeItem(i.id, i.weight)} className="p-3 bg-red-500/10 text-red-500 rounded-xl"><Trash2 size={18}/></button>
+                </div>
+              ))}
+            </div>
+            <div className="pt-8 border-t border-white/10 space-y-4">
+              <input type="text" placeholder="@Telegram" value={tgUser} onChange={(e) => setTgUser(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm" />
+              <input type="text" placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm" />
+              <div className="flex justify-between items-end py-4"><span className="text-xs font-black uppercase opacity-30">Total</span><span className="text-5xl font-black italic">{totalPrice}฿</span></div>
+              <button onClick={handleSendOrder} className="w-full py-6 bg-white text-[#193D2E] rounded-3xl font-black uppercase italic">Send Order</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
