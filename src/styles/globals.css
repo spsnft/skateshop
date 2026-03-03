@@ -4,48 +4,40 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
+    /* Твой базовый темно-зеленый фон #193D2E */
+    --background: 145 42% 17%;
+    --foreground: 0 0% 100%;
+    
+    --card: 145 42% 17%;
+    --card-foreground: 0 0% 100%;
+    
+    --popover: 145 42% 17%;
+    --popover-foreground: 0 0% 100%;
+    
+    --primary: 158 64% 52%; /* Изумрудный акцент */
+    --primary-foreground: 145 42% 10%;
+    
+    --secondary: 145 42% 25%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 145 42% 25%;
+    --muted-foreground: 0 0% 70%;
+    
+    --accent: 158 64% 52%;
+    --accent-foreground: 145 42% 10%;
+    
+    --border: 145 42% 25%;
+    --input: 145 42% 25%;
+    --ring: 158 64% 52%;
+    
+    --radius: 2.5rem; /* Твои закругленные углы */
   }
 
+  /* Для темной темы оставляем те же параметры, так как сайт всегда темный */
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --background: 145 42% 17%;
+    --foreground: 0 0% 100%;
+    --border: 145 42% 25%;
   }
 }
 
@@ -54,22 +46,30 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: #193D2E !important; /* Принудительный фикс фона */
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-@layer components {
-  .zoom-image [data-rmiz-modal-overlay="visible"] {
-    @apply bg-background/10 backdrop-blur;
+@layer utilities {
+  /* Тот самый эффект глубокого стекла для iPad */
+  .backdrop-blur-3xl {
+    -webkit-backdrop-filter: blur(60px) !important;
+    backdrop-filter: blur(60px) !important;
   }
-
-  .zoom-image [data-rmiz-modal-img] {
-    @apply rounded-md lg:rounded-2xl;
+  
+  /* Убираем стандартные скроллбары для красоты */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
-@media (max-width: 640px) {
-  .container {
-    @apply px-4;
-  }
+/* Фикс для кнопок и инпутов */
+input[type="range"] {
+  @apply accent-white;
 }
