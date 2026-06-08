@@ -176,6 +176,7 @@ export function CheckoutModal({ items: rawItems, total: initialTotal, t, lang, o
   const [paymentMethod, setPaymentMethod] = React.useState<string>('cash');
   const [address, setAddress] = React.useState<string>('');
   const [showSuccessPopup, setShowSuccessPopup] = React.useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
 
   // Сквозная группировка веса по подкатегориям
   const categoryWeights = React.useMemo(() => {
@@ -285,11 +286,59 @@ export function CheckoutModal({ items: rawItems, total: initialTotal, t, lang, o
 
   const isFormValid = phone.trim().length > 0 && contactMethod !== '';
 
-  const handleOpenSuccessPopup = (e: React.FormEvent) => {
+  const handleFormSubmitAndPreSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid) return;
-    triggerHaptic('success');
-    setShowSuccessPopup(true);
+    if (!isFormValid || isSubmitting) return;
+
+    setIsSubmitting(true);
+    triggerHaptic('medium');
+
+    let orderText = '';
+    processedItems.forEach(item => {
+      const itemCategory = item.category === 'buds' ? 'Buds' : item.category === 'joints' ? 'Joints' : item.category || 'Product';
+      const itemSub = item.subcategory ? ` / ${item.subcategory}` : '';
+      orderText += `• [${itemCategory}${itemSub}] ${item.name} (${item.weight}) — ${item.finalPrice}฿\n`;
+    });
+
+    if (address.trim() !== '') {
+      orderText += `\n🏠 Адрес: ${address.trim()}`;
+    }
+
+    const paymentLabels: Record<string, string> = {
+      cash: lang === 'ru' ? 'Наличные курьеру' : 'Cash on delivery',
+      thai: lang === 'ru' ? 'Перевод Бат (Thai QR)' : 'Thai Bank Transfer',
+      crypto: 'Crypto',
+      rub: 'Рубли'
+    };
+    const currentPayment = paymentLabels[paymentMethod] || paymentMethod;
+
+    try {
+      const scriptUrl = 'https://script.google.com/macros/s/AKfycbyWoirxcrPstlMohLMoWV0llN69vMnWzGNc-8wksFULMlasDQechzbRJwcY-RbuagsE/exec';
+
+      // Теневая фоновая отправка на бэкенд Google Таблицы
+      await fetch(scriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderText: orderText.trim(),
+          total: finalCalculatedTotal,
+          contact: phone,
+          method: `${contactMethod} / ${currentPayment}`
+        }),
+      });
+
+      // ИСПРАВЛЕНИЕ: Корзина очищается СРАЗУ ПОСЛЕ УСПЕШНОЙ отправки данных в таблицу
+      clearCart();
+
+      triggerHaptic('success');
+      setShowSuccessPopup(true);
+    } catch (err) {
+      console.error(err);
+      alert(lang === 'ru' ? 'Ошибка отправки. Попробуйте еще раз.' : 'Send error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFinalTelegramSubmit = () => {
@@ -305,7 +354,9 @@ export function CheckoutModal({ items: rawItems, total: initialTotal, t, lang, o
     let message = lang === 'ru' ? `*⚡️ НОВЫЙ ЗАКАЗ НА СТЕНДЕ*\n\n` : `*⚡️ NEW WEB ORDER*\n\n`;
     
     processedItems.forEach(item => {
-      message += `• *${item.name}* (${item.weight}) — ${item.finalPrice}฿\n`;
+      const itemCategory = item.category === 'buds' ? 'Buds' : item.category === 'joints' ? 'Joints' : item.category || 'Product';
+      const itemSub = item.subcategory ? ` / ${item.subcategory}` : '';
+      message += `• *[${itemCategory}${itemSub}] ${item.name}* (${item.weight}) — ${item.finalPrice}฿\n`;
     });
     
     message += `\n*${lang === 'ru' ? 'Итого' : 'Total'}:* ${finalCalculatedTotal}฿\n`;
@@ -318,7 +369,7 @@ export function CheckoutModal({ items: rawItems, total: initialTotal, t, lang, o
     const encoded = encodeURIComponent(message);
     window.open(`https://t.me/bshk_phuket?text=${encoded}`, '_blank');
     
-    clearCart();
+    // Из этой функции убрали clearCart(), так как она теперь отрабатывает раньше
     setShowSuccessPopup(false);
     onClose();
   };
@@ -327,7 +378,6 @@ export function CheckoutModal({ items: rawItems, total: initialTotal, t, lang, o
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-lg" onClick={onClose}>
       <div className="relative w-full max-w-[420px] bg-[#193D2E] rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl max-h-[90vh] flex flex-col animate-fade-in" onClick={e => e.stopPropagation()}>
         
-        {/* ФИОЛЕТОВАЯ ПРАВКА ОТСТУПОВ: pt-2 px-6 pb-6 вместо p-6 убирает лишний разрыв сверху */}
         <div className="pt-2 px-6 pb-6 border-b border-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <ShoppingBag className="text-emerald-400" size={20} />
@@ -374,7 +424,6 @@ export function CheckoutModal({ items: rawItems, total: initialTotal, t, lang, o
                     </div>
                   </div>
                   
-                  {/* ПРАВКА ПУНКТА 1: Удаление по исходному originalIndex — теперь работает стабильно */}
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-[13px] font-black text-white">{item.finalPrice}<Baht className="opacity-40" /></span>
                     <button 
@@ -401,7 +450,7 @@ export function CheckoutModal({ items: rawItems, total: initialTotal, t, lang, o
             </div>
           )}
 
-          <form onSubmit={handleOpenSuccessPopup} className="space-y-4 pt-2 border-t border-white/5">
+          <form id="checkout-form" onSubmit={handleFormSubmitAndPreSave} className="space-y-4 pt-2 border-t border-white/5">
             
             <div className="space-y-1.5">
               <label className="text-[9px] font-black uppercase tracking-widest text-white/40 block">
@@ -487,23 +536,22 @@ export function CheckoutModal({ items: rawItems, total: initialTotal, t, lang, o
           </form>
         </div>
 
-        {/* ФИОЛЕТОВАЯ ПРАВКА ОТСТУПОВ: py-3 px-6 вместо p-6 делает нижнюю зону компактной */}
         <div className="py-3 px-6 border-t border-white/5 bg-black/10 space-y-3 shrink-0">
           <div className="flex justify-between items-end">
             <span className="text-[11px] font-black uppercase tracking-widest text-white/40">{lang === 'ru' ? 'ИТОГО К ОПЛАТЕ' : 'TOTAL AMOUNT'}</span>
             <span className="text-[26px] font-black tracking-tighter text-white leading-none">{finalCalculatedTotal}<Baht className="opacity-40" /></span>
           </div>
           <button 
-            disabled={!isFormValid}
-            onClick={handleOpenSuccessPopup}
-            className={`w-full h-[50px] rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-[12px] tracking-[0.15em] transition-all shadow-lg ${isFormValid ? 'bg-white text-[#193D2E] active:scale-[0.98] hover:bg-emerald-400 hover:text-black' : 'bg-white/10 text-white/20 cursor-not-allowed'}`}
+            type="submit"
+            form="checkout-form"
+            disabled={!isFormValid || isSubmitting}
+            className={`w-full h-[50px] rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-[12px] tracking-[0.15em] transition-all shadow-lg ${isFormValid && !isSubmitting ? 'bg-white text-[#193D2E] active:scale-[0.98] hover:bg-emerald-400 hover:text-black' : 'bg-white/10 text-white/20 cursor-not-allowed'}`}
           >
-            <span>{lang === 'ru' ? 'Подтвердить заказ' : 'Confirm Order'}</span>
+            <span>{isSubmitting ? (lang === 'ru' ? 'Отправка...' : 'Sending...') : (lang === 'ru' ? 'Подтвердить заказ' : 'Confirm Order')}</span>
             <SendHorizontal size={14} />
           </button>
         </div>
 
-        {/* ДВУХЭТАПНЫЙ ПОП-АП С ОПЕРАТОРОМ */}
         {showSuccessPopup && (
           <div className="absolute inset-0 bg-[#112D21] z-50 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
             <div className="p-4 bg-emerald-500/10 rounded-full text-emerald-400 mb-4">
